@@ -1,16 +1,11 @@
 import { createClient } from '@supabase/supabase-js'
 import type { Database } from '~~/types/database'
+import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from '~/utils/supabase-config'
 
 export default defineNuxtPlugin(() => {
-  const config = useRuntimeConfig()
-
-  if (!config.public.supabaseUrl || !config.public.supabasePublishableKey) {
-    throw new Error('Missing Supabase public runtime configuration')
-  }
-
   const supabase = createClient<Database>(
-    config.public.supabaseUrl as string,
-    config.public.supabasePublishableKey as string,
+    SUPABASE_URL,
+    SUPABASE_PUBLISHABLE_KEY,
     {
       auth: {
         persistSession: false,
