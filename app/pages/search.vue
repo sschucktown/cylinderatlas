@@ -44,7 +44,7 @@ const { data: results, pending } = await useAsyncData(
       .eq('publish_status', 'publish')
       .order('state')
       .order('city')
-      .limit(200)
+      .limit(1000)
 
     if (stateFilter.value) {
       query = query.eq('state', stateFilter.value)
