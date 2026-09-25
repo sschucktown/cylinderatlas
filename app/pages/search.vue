@@ -149,6 +149,10 @@ function pageLink(page: number) {
   return { path: '/search', query }
 }
 
+if (resultCount.value > 0 && currentPage.value > totalPages.value) {
+  await navigateTo(pageLink(totalPages.value), { replace: true, redirectCode: 302 })
+}
+
 useSeoMeta({
   title: 'Search Cylinder Requalification Providers — Cylinder Atlas',
   description: 'Search published Cylinder Atlas provider listings by provider, location, RIN, or service category.',
