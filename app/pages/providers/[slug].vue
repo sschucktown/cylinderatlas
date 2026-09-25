@@ -50,8 +50,9 @@ const name = displayName(facility)
 const currentPath = providerPath(facility)
 const verifiedDate = formatVerifiedDate(facility.verified_at)
 const address = facility.display_address || facility.phmsa_address
-const claimPath = currentPath + '/claim'
-const correctionPath = currentPath + '/correct'
+const canonicalSlug = currentPath.split('/').pop() || slug
+const claimPath = '/claim/' + canonicalSlug
+const correctionPath = '/correct/' + canonicalSlug
 
 if (route.path !== currentPath) {
   await navigateTo(currentPath, { redirectCode: 301, replace: true })
