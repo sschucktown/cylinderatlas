@@ -3,7 +3,9 @@ import {
   codeFromStateSlug,
   serviceLabel,
   stateName,
+  statePath,
 } from '~/utils/directory'
+import { canonicalUrl } from '~/utils/site'
 
 const route = useRoute()
 const { $supabase } = useNuxtApp()
@@ -62,6 +64,10 @@ useSeoMeta({
     name +
     ', with PHMSA RIN context and evidence-backed service categories.',
   robots: facilities.length >= 3 ? 'index,follow' : 'noindex,follow',
+})
+
+useHead({
+  link: [{ rel: 'canonical', href: canonicalUrl(statePath(stateCode)) }],
 })
 </script>
 
