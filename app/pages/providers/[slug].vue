@@ -9,6 +9,7 @@ import {
   statePath,
   titleCaseCity,
 } from '~/utils/directory'
+import { canonicalUrl } from '~/utils/site'
 
 const route = useRoute()
 const { $supabase } = useNuxtApp()
@@ -49,6 +50,8 @@ const name = displayName(facility)
 const currentPath = providerPath(facility)
 const verifiedDate = formatVerifiedDate(facility.verified_at)
 const address = facility.display_address || facility.phmsa_address
+const claimPath = currentPath + '/claim'
+const correctionPath = currentPath + '/correct'
 
 if (route.path !== currentPath) {
   await navigateTo(currentPath, { redirectCode: 301, replace: true })
@@ -67,6 +70,7 @@ useSeoMeta({
 })
 
 useHead({
+  link: [{ rel: 'canonical', href: canonicalUrl(currentPath) }],
   script: [
     {
       type: 'application/ld+json',
@@ -186,6 +190,27 @@ useHead({
         <p class="mt-5 text-xs leading-5 text-teal-800">
           Verify service details directly with the provider before visiting or shipping a cylinder.
         </p>
+
+        <div class="mt-6 border-t border-teal-200 pt-5">
+          <p class="text-sm font-semibold text-teal-950">Manage this listing</p>
+          <p class="mt-2 text-xs leading-5 text-teal-800">
+            Provider claims and corrections are reviewed before they change public listing data.
+          </p>
+          <div class="mt-4 grid gap-2">
+            <NuxtLink
+              :to="claimPath"
+              class="rounded-lg bg-slate-950 px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-slate-800"
+            >
+              Claim this listing
+            </NuxtLink>
+            <NuxtLink
+              :to="correctionPath"
+              class="rounded-lg border border-teal-300 bg-white px-4 py-2.5 text-center text-sm font-semibold text-teal-900 hover:border-teal-400"
+            >
+              Report or correct listing
+            </NuxtLink>
+          </div>
+        </div>
       </aside>
     </div>
   </main>
