@@ -136,8 +136,10 @@ async function submitClaim() {
 
 onMounted(async () => {
   await refreshUser()
-  const { data } = $supabase.auth.onAuthStateChange(async () => {
-    await refreshUser()
+  const { data } = $supabase.auth.onAuthStateChange(() => {
+    window.setTimeout(() => {
+      void refreshUser()
+    }, 0)
   })
   unsubscribe = () => data.subscription.unsubscribe()
 })
