@@ -1,0 +1,20 @@
+{
+  "runName": "national-enrichment-20260924-v1",
+  "batch": "national-scuba-batch-03",
+  "records": [
+    {
+      "rin": "N000",
+      "identityMatch": "matched",
+      "businessStatus": "active",
+      "servesExternalCustomers": "yes",
+      "currentName": "Example Provider",
+      "currentAddress": "123 Example St, Example, ST 00000",
+      "serviceKeys": ["scuba"],
+      "serviceConfidence": 0.95,
+      "identityConfidence": 0.95,
+      "evidenceUrl": "https://example.com/service",
+      "evidenceType": "first_party",
+      "summary": "Current first-party evidence matches the RIN facility and explicitly supports customer-facing hydrostatic cylinder requalification."
+    }
+  ]
+}
