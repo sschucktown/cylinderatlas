@@ -109,7 +109,9 @@ for (const record of payload.records) {
 
   if (resultError) throw resultError
 
-  for (const serviceKey of result.serviceKeys) {
+  // Only evidence-supplied service keys become verified rows. Heuristic suggestions
+  // may help manual review, but they must never become verified service evidence.
+  for (const serviceKey of record.serviceKeys) {
     const { error: serviceError } = await supabase
       .from('facility_services')
       .upsert(
