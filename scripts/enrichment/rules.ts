@@ -78,8 +78,9 @@ export function decide(
     }
   }
 
-  const services = evidence.serviceKeys.length
-    ? evidence.serviceKeys
+  const evidenceBackedServices = evidence.serviceKeys
+  const suggestedServices = evidenceBackedServices.length
+    ? evidenceBackedServices
     : inferCandidateServices(candidate)
 
   const publishable =
@@ -88,14 +89,14 @@ export function decide(
     evidence.servesExternalCustomers === 'yes' &&
     evidence.identityConfidence >= 0.85 &&
     evidence.serviceConfidence >= 0.85 &&
-    services.length > 0
+    evidenceBackedServices.length > 0
 
   if (publishable) {
     return {
       rin: candidate.rin,
       decision: 'publish',
       commercialStatus: 'yes',
-      serviceKeys: services,
+      serviceKeys: evidenceBackedServices,
       identityConfidence: evidence.identityConfidence,
       serviceConfidence: evidence.serviceConfidence,
       currentName: evidence.currentName,
@@ -112,7 +113,7 @@ export function decide(
       businessStatus === 'active' && evidence.servesExternalCustomers === 'yes'
         ? 'yes'
         : 'unknown',
-    serviceKeys: services,
+    serviceKeys: suggestedServices,
     identityConfidence: evidence.identityConfidence,
     serviceConfidence: evidence.serviceConfidence,
     currentName: evidence.currentName,
