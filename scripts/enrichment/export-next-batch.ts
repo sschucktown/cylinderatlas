@@ -20,16 +20,6 @@ if (run.status !== 'running' && run.status !== 'queued') {
   throw new Error('Run ' + runName + ' is not resumable from status ' + run.status)
 }
 
-const { data: completed, error: completedError } = await supabase
-  .from('facility_enrichment_results')
-  .select('facility_id')
-  .eq('run_id', run.id)
-  .limit(10000)
-
-if (completedError) throw completedError
-
-const completedIds = new Set((completed ?? []).map((row) => row.facility_id))
-
 let query = supabase
   .from('facilities')
   .select('id, rin, phmsa_name, phmsa_address, city, state, postal_code, candidate_type_hint')
@@ -44,9 +34,9 @@ if (hint) query = query.eq('candidate_type_hint', hint)
 const { data: candidates, error: candidatesError } = await query
 if (candidatesError) throw candidatesError
 
-const rows = (candidates ?? [])
-  .filter((candidate) => !completedIds.has(candidate.id))
-  .slice(0, limit)
+// Pipeline status is the resume cursor. If a prior attempt wrote an audit row but
+// failed before updating the facility, the facility remains queued and is exported again.
+const rows = (candidates ?? []).slice(0, limit)
 
 const payload = {
   runName: run.name,
