@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { SERVICE_KEYS, serviceInfo, stateName, statePath } from '~/utils/directory'
+import { canonicalUrl } from '~/utils/site'
 
 const route = useRoute()
 const { $supabase } = useNuxtApp()
@@ -56,6 +57,10 @@ useSeoMeta({
     service.label.toLowerCase() +
     ' service.',
   robots: facilities.length >= 3 ? 'index,follow' : 'noindex,follow',
+})
+
+useHead({
+  link: [{ rel: 'canonical', href: canonicalUrl('/services/' + serviceKey) }],
 })
 </script>
 

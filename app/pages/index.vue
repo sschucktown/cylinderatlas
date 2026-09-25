@@ -6,6 +6,7 @@ import {
   stateName,
   statePath,
 } from '~/utils/directory'
+import { canonicalUrl } from '~/utils/site'
 
 const { $supabase } = useNuxtApp()
 
@@ -84,6 +85,10 @@ useSeoMeta({
   title: 'Cylinder Atlas — Find DOT Cylinder Requalification Providers',
   description:
     'Find evidence-backed U.S. cylinder requalification providers by service and location, built from PHMSA RIN data and current business evidence.',
+})
+
+useHead({
+  link: [{ rel: 'canonical', href: canonicalUrl('/') }],
 })
 </script>
 
