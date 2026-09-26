@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { SERVICE_KEYS, serviceInfo, stateName, statePath } from '~/utils/directory'
+import { SERVICE_KEYS, serviceInfo, stateName } from '~/utils/directory'
 import { canonicalUrl } from '~/utils/site'
 
 const route = useRoute()
@@ -50,6 +50,16 @@ const states = Object.entries(stateCounts)
   .map(([code, count]) => ({ code, count }))
   .sort((a, b) => b.count - a.count || a.code.localeCompare(b.code))
 
+function stateServiceSearchPath(code: string) {
+  return {
+    path: '/search',
+    query: {
+      state: code,
+      service: serviceKey,
+    },
+  }
+}
+
 useSeoMeta({
   title: service.label + ' Requalification Providers — Cylinder Atlas',
   description:
@@ -89,7 +99,7 @@ useHead({
         <NuxtLink
           v-for="state in states"
           :key="state.code"
-          :to="statePath(state.code)"
+          :to="stateServiceSearchPath(state.code)"
           class="rounded-full bg-slate-100 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-200"
         >
           {{ stateName(state.code) }} · {{ state.count }}

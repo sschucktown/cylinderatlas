@@ -55,6 +55,16 @@ const services = Object.entries(serviceCounts)
   .map(([key, count]) => ({ key, count }))
   .sort((a, b) => b.count - a.count || a.key.localeCompare(b.key))
 
+function stateServiceSearchPath(serviceKey: string) {
+  return {
+    path: '/search',
+    query: {
+      state: stateCode,
+      service: serviceKey,
+    },
+  }
+}
+
 const name = stateName(stateCode)
 
 useSeoMeta({
@@ -95,7 +105,7 @@ useHead({
         <NuxtLink
           v-for="service in services"
           :key="service.key"
-          :to="'/services/' + service.key"
+          :to="stateServiceSearchPath(service.key)"
           class="rounded-full bg-slate-100 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-200"
         >
           {{ serviceLabel(service.key) }} · {{ service.count }}

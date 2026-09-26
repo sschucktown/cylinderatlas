@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { SERVICE_KEYS, serviceLabel, stateName } from '~/utils/directory'
+import { SERVICE_KEYS, codeFromStateSlug, serviceLabel, stateName } from '~/utils/directory'
 import { canonicalUrl } from '~/utils/site'
 
 const PAGE_SIZE = 24
@@ -86,14 +86,26 @@ const { data: results, pending } = await useAsyncData(
 
     const safeSearch = searchTerm.value.replace(/[^a-zA-Z0-9\s-]/g, ' ').replace(/\s+/g, ' ').trim()
     if (safeSearch) {
-      const pattern = '%' + safeSearch + '%'
-      query = query.or(
-        'display_name.ilike.' + pattern +
-          ',phmsa_name.ilike.' + pattern +
-          ',city.ilike.' + pattern +
-          ',state.ilike.' + pattern +
-          ',rin.ilike.' + pattern,
-      )
+      const exactState = codeFromStateSlug(safeSearch)
+
+      if (exactState) {
+        query = query.eq('state', exactState)
+      } else {
+        const tokens = safeSearch.split(' ').filter(Boolean).slice(0, 6)
+
+        for (const token of tokens) {
+          const pattern = '%' + token + '%'
+          query = query.or(
+            'display_name.ilike.' + pattern +
+              ',phmsa_name.ilike.' + pattern +
+              ',display_address.ilike.' + pattern +
+              ',city.ilike.' + pattern +
+              ',state.ilike.' + pattern +
+              ',postal_code.ilike.' + pattern +
+              ',rin.ilike.' + pattern,
+          )
+        }
+      }
     }
 
     const offset = (currentPage.value - 1) * PAGE_SIZE
@@ -155,7 +167,7 @@ if (resultCount.value > 0 && currentPage.value > totalPages.value) {
 
 useSeoMeta({
   title: 'Search Cylinder Requalification Providers — Cylinder Atlas',
-  description: 'Search published Cylinder Atlas provider listings by provider, location, RIN, or service category.',
+  description: 'Search published Cylinder Atlas provider listings by provider, city, state, ZIP code, RIN, or service category.',
   robots: 'noindex,follow',
 })
 
@@ -184,7 +196,7 @@ useHead({
           name="q"
           type="search"
           :value="searchTerm"
-          placeholder="Provider, city, state, or RIN"
+          placeholder="Provider, city, state, ZIP, or RIN"
           class="w-full rounded-lg border border-slate-300 px-3 py-2.5 outline-none ring-teal-600 focus:ring-2"
         >
       </div>

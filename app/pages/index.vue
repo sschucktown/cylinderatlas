@@ -136,7 +136,7 @@ useHead({
               id="home-search"
               name="q"
               type="search"
-              placeholder="Provider, city, state, or RIN"
+              placeholder="Provider, city, state, ZIP, or RIN"
               class="min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-4 py-3 text-base outline-none ring-teal-600 focus:ring-2"
             >
             <button
