@@ -91,7 +91,7 @@ export function decide(
     businessStatus === 'active' &&
     evidence.servesExternalCustomers === 'yes' &&
     evidence.identityConfidence >= 0.85 &&
-    evidence.identityCorroborated &&
+    evidence.identityCorroborated === true &&
     evidence.serviceConfidence >= 0.85 &&
     evidenceBackedServices.length > 0
 
@@ -122,7 +122,7 @@ export function decide(
     serviceConfidence: evidence.serviceConfidence,
     currentName: evidence.currentName,
     currentAddress: evidence.currentAddress,
-    manualReviewReason: evidence.identityCorroborated
+    manualReviewReason: evidence.identityCorroborated === true
       ? 'insufficient current evidence to clear publish threshold'
       : 'current identity/location/business status lacks independent corroboration',
     evidenceUrls: evidence.evidenceUrls,
