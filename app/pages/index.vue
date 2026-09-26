@@ -10,6 +10,29 @@ import { canonicalUrl } from '~/utils/site'
 
 const { $supabase } = useNuxtApp()
 
+async function redirectAdminAuthLanding() {
+  if (!import.meta.client) return
+
+  const authLanding =
+    window.location.hash.includes('access_token=') ||
+    window.location.hash.includes('type=magiclink') ||
+    new URLSearchParams(window.location.search).has('code')
+
+  if (!authLanding) return
+
+  const userResult = await $supabase.auth.getUser()
+  if (userResult.error || !userResult.data.user) return
+
+  const adminResult = await $supabase.rpc('is_admin')
+  if (!adminResult.error && adminResult.data === true) {
+    await navigateTo('/admin/claims', { replace: true })
+  }
+}
+
+onMounted(() => {
+  void redirectAdminAuthLanding()
+})
+
 const { data: directory } = await useAsyncData('directory-home', async () => {
   const countResult = await $supabase
     .from('facilities')
