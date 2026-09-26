@@ -34,6 +34,7 @@ export interface EvidenceInput {
   serviceKeys: ServiceKey[]
   serviceConfidence: number
   identityConfidence: number
+  identityCorroborated?: boolean
   evidenceUrls: string[]
   summary: string
 }

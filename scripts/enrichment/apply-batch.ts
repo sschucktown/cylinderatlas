@@ -5,11 +5,21 @@ import { createAdminClient } from './admin-client'
 
 type EvidenceType = 'regulatory' | 'first_party' | 'business_registry' | 'directory' | 'provider_claim' | 'other'
 
-interface BatchRecord extends EvidenceInput {
+interface BatchRecord extends Omit<EvidenceInput, 'identityCorroborated' | 'evidenceUrls'> {
   rin: string
   evidenceUrl: string
   evidenceType: EvidenceType
+  corroborationEvidenceUrl?: string
+  corroborationEvidenceType?: EvidenceType
+  corroborationSummary?: string
 }
+
+const IDENTITY_CORROBORATION_TYPES = new Set<EvidenceType>([
+  'first_party',
+  'business_registry',
+  'regulatory',
+  'provider_claim',
+])
 
 interface BatchPayload {
   runName: string
@@ -78,7 +88,21 @@ for (const record of payload.records) {
     candidate_type_hint: facility.candidate_type_hint,
   }
 
-  const result = decide(candidate, record)
+  const identityCorroborated =
+    IDENTITY_CORROBORATION_TYPES.has(record.evidenceType) ||
+    Boolean(
+      record.corroborationEvidenceType &&
+        IDENTITY_CORROBORATION_TYPES.has(record.corroborationEvidenceType),
+    )
+
+  const result = decide(candidate, {
+    ...record,
+    identityCorroborated,
+    evidenceUrls: [
+      record.evidenceUrl,
+      ...(record.corroborationEvidenceUrl ? [record.corroborationEvidenceUrl] : []),
+    ],
+  })
 
   const { error: resultError } = await supabase
     .from('facility_enrichment_results')
@@ -101,6 +125,9 @@ for (const record of payload.records) {
           batch: payload.batch,
           evidence_url: record.evidenceUrl,
           evidence_type: record.evidenceType,
+          identity_corroborated: identityCorroborated,
+          corroboration_evidence_url: record.corroborationEvidenceUrl ?? null,
+          corroboration_evidence_type: record.corroborationEvidenceType ?? null,
         },
         checked_at: new Date().toISOString(),
       },
@@ -149,6 +176,32 @@ for (const record of payload.records) {
     if (evidenceError) throw evidenceError
   }
 
+  if (record.corroborationEvidenceUrl && record.corroborationEvidenceType) {
+    const { data: existingCorroboration, error: corroborationLookupError } = await supabase
+      .from('evidence')
+      .select('id')
+      .eq('facility_id', facility.id)
+      .eq('supports_field', 'national-enrichment-v1-corroboration')
+      .eq('url', record.corroborationEvidenceUrl)
+      .limit(1)
+
+    if (corroborationLookupError) throw corroborationLookupError
+
+    if (!existingCorroboration?.length) {
+      const { error: corroborationError } = await supabase.from('evidence').insert({
+        facility_id: facility.id,
+        evidence_type: record.corroborationEvidenceType,
+        url: record.corroborationEvidenceUrl,
+        supports_field: 'national-enrichment-v1-corroboration',
+        summary:
+          record.corroborationSummary ??
+          'Independent current identity/location/business-status corroboration.',
+      })
+
+      if (corroborationError) throw corroborationError
+    }
+  }
+
   const facilityUpdate: Record<string, unknown> = {
     publish_status: result.decision,
     commercial_status: result.commercialStatus,
@@ -163,12 +216,12 @@ for (const record of payload.records) {
     enrichment_run_id: run.id,
     enrichment_version: run.algorithm_version,
     last_enriched_at: new Date().toISOString(),
+    verified_at: result.decision === 'publish' ? new Date().toISOString() : null,
   }
 
   if (result.decision === 'publish') {
     facilityUpdate.display_name = result.currentName ?? facility.phmsa_name
     facilityUpdate.display_address = result.currentAddress ?? facility.phmsa_address
-    facilityUpdate.verified_at = new Date().toISOString()
   }
 
   const { error: facilityError } = await supabase

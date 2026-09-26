@@ -9,12 +9,17 @@
       "servesExternalCustomers": "yes",
       "currentName": "Example Provider",
       "currentAddress": "123 Example St, Example, ST 00000",
-      "serviceKeys": ["scuba"],
+      "serviceKeys": [
+        "scuba"
+      ],
       "serviceConfidence": 0.95,
       "identityConfidence": 0.95,
-      "evidenceUrl": "https://example.com/service",
-      "evidenceType": "first_party",
-      "summary": "Current first-party evidence matches the RIN facility and explicitly supports customer-facing hydrostatic cylinder requalification."
+      "evidenceUrl": "https://example.com/services/hydro-testing",
+      "evidenceType": "directory",
+      "summary": "Current service evidence explicitly supports customer-facing hydrostatic cylinder requalification.",
+      "corroborationEvidenceUrl": "https://example.com/contact",
+      "corroborationEvidenceType": "first_party",
+      "corroborationSummary": "Current first-party contact page matches the provider identity and exact PHMSA RIN facility address."
     }
   ]
 }

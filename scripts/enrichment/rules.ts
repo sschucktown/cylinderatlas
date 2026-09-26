@@ -30,8 +30,11 @@ export function obviousInternalStatus(candidate: FacilityCandidate): BusinessSta
 /**
  * Production gate:
  * - PHMSA/name heuristics may infer a likely service, but they NEVER publish by themselves.
- * - Publish requires fresh current-identity evidence plus current evidence that the facility
- *   serves outside customers and supports at least one service category.
+ * - Publish requires current identity/location/business-status corroboration from a
+ *   first-party, regulatory, business-registry, or provider-confirmed source. A generic
+ *   directory/service listing may support service evidence but cannot clear identity alone.
+ * - Publish also requires current evidence that the facility serves outside customers and
+ *   supports at least one service category.
  * - Acquisitions/moves/name changes remain in review until the RIN-to-facility relationship
  *   is reconciled.
  */
@@ -88,6 +91,7 @@ export function decide(
     businessStatus === 'active' &&
     evidence.servesExternalCustomers === 'yes' &&
     evidence.identityConfidence >= 0.85 &&
+    evidence.identityCorroborated === true &&
     evidence.serviceConfidence >= 0.85 &&
     evidenceBackedServices.length > 0
 
@@ -118,7 +122,9 @@ export function decide(
     serviceConfidence: evidence.serviceConfidence,
     currentName: evidence.currentName,
     currentAddress: evidence.currentAddress,
-    manualReviewReason: 'insufficient current evidence to clear publish threshold',
+    manualReviewReason: evidence.identityCorroborated === true
+      ? 'insufficient current evidence to clear publish threshold'
+      : 'current identity/location/business status lacks independent corroboration',
     evidenceUrls: evidence.evidenceUrls,
     summary: evidence.summary,
   }
