@@ -291,7 +291,7 @@ useHead({
       <span v-else />
     </nav>
 
-    <div v-else-if="!pending" class="mt-5 rounded-2xl border border-dashed border-slate-300 bg-white p-8">
+    <div v-if="!pending && !results?.facilities.length" class="mt-5 rounded-2xl border border-dashed border-slate-300 bg-white p-8">
       <p class="font-semibold text-slate-900">No published providers match those filters.</p>
       <p class="mt-2 text-sm leading-6 text-slate-600">
         Try a nearby state, remove a service filter, or search by RIN. Facilities still under enrichment or review are intentionally not shown.
