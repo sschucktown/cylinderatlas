@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Database } from '~~/types/database'
 import { providerPath, titleCaseCity } from '~/utils/directory'
+import { authRedirectUrl } from '~/utils/site'
 
 type AdminClaim = Database['public']['Functions']['admin_claims_queue']['Returns'][number]
 type ReviewStatus = 'verified' | 'rejected'
@@ -115,7 +116,7 @@ async function sendSignInLink() {
     email: email.value.trim(),
     options: {
       shouldCreateUser: false,
-      emailRedirectTo: window.location.origin + '/admin/claims',
+      emailRedirectTo: authRedirectUrl('/admin/claims'),
     },
   })
   authSending.value = false
