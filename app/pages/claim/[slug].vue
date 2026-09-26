@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { displayName, providerPath, rinFromProviderSlug, titleCaseCity } from '~/utils/directory'
+import { authRedirectUrl } from '~/utils/site'
 
 const route = useRoute()
 const { $supabase } = useNuxtApp()
@@ -95,7 +96,7 @@ async function sendSignInLink() {
     email: email.value.trim(),
     options: {
       shouldCreateUser: true,
-      emailRedirectTo: window.location.origin + claimPath,
+      emailRedirectTo: authRedirectUrl(claimPath),
     },
   })
   authSending.value = false
