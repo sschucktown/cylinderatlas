@@ -24,7 +24,7 @@ if (!rin) {
 const facilityResult = await $supabase
   .from('facilities')
   .select(
-    'id, rin, display_name, phmsa_name, display_address, phmsa_address, city, state, postal_code, phone, website_url, verified_at',
+    'id, rin, display_name, phmsa_name, display_address, phmsa_address, city, state, postal_code, phone, website_url, verified_at, source_effective_date',
   )
   .eq('publish_status', 'publish')
   .eq('rin', rin)
@@ -38,7 +38,7 @@ if (!facilityResult.data) {
 const facility = facilityResult.data
 const servicesResult = await $supabase
   .from('facility_services')
-  .select('service_key, status, confidence')
+  .select('service_key, status')
   .eq('facility_id', facility.id)
   .in('status', ['verified', 'provider_confirmed'])
   .order('service_key')
@@ -49,7 +49,15 @@ const services = servicesResult.data ?? []
 const name = displayName(facility)
 const currentPath = providerPath(facility)
 const verifiedDate = formatVerifiedDate(facility.verified_at)
-const address = facility.display_address || facility.phmsa_address
+const sourceEffectiveDate = formatVerifiedDate(facility.source_effective_date)
+const address =
+  facility.display_address ||
+  [
+    facility.phmsa_address,
+    [titleCaseCity(facility.city), facility.state, facility.postal_code].filter(Boolean).join(' '),
+  ]
+    .filter(Boolean)
+    .join(', ')
 const canonicalSlug = currentPath.split('/').pop() || slug
 const claimPath = '/claim/' + canonicalSlug
 const correctionPath = '/correct/' + canonicalSlug
@@ -79,17 +87,15 @@ useHead({
         '@context': 'https://schema.org',
         '@type': 'LocalBusiness',
         name,
-        address: {
-          '@type': 'PostalAddress',
-          streetAddress: address,
-          addressLocality: titleCaseCity(facility.city),
-          addressRegion: facility.state,
-          postalCode: facility.postal_code || undefined,
-          addressCountry: 'US',
-        },
+        address,
         telephone: facility.phone || undefined,
-        url: facility.website_url || undefined,
-        identifier: 'PHMSA RIN ' + facility.rin,
+        url: canonicalUrl(currentPath),
+        sameAs: facility.website_url ? [facility.website_url] : undefined,
+        identifier: {
+          '@type': 'PropertyValue',
+          propertyID: 'PHMSA RIN',
+          value: facility.rin,
+        },
       }),
     },
   ],
@@ -108,30 +114,66 @@ useHead({
 
     <div class="mt-6 grid gap-8 lg:grid-cols-[1fr_320px]">
       <div>
-        <p class="text-sm font-semibold uppercase tracking-[0.14em] text-teal-700">
-          Published provider
-        </p>
-        <h1 class="mt-2 text-3xl font-semibold tracking-tight text-slate-950 sm:text-5xl">
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="rounded-full bg-teal-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-teal-800">
+            PHMSA-listed RIN
+          </span>
+          <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+            Source verified
+          </span>
+        </div>
+
+        <h1 class="mt-4 text-3xl font-semibold tracking-tight text-slate-950 sm:text-5xl">
           {{ name }}
         </h1>
         <p class="mt-3 text-lg text-slate-600">
           {{ titleCaseCity(facility.city) }}, {{ facility.state }}
         </p>
 
+        <div v-if="facility.phone || facility.website_url" class="mt-6 flex flex-wrap gap-3">
+          <a
+            v-if="facility.phone"
+            :href="'tel:' + facility.phone"
+            class="rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800"
+          >
+            Call provider
+          </a>
+          <a
+            v-if="facility.website_url"
+            :href="facility.website_url"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-800 hover:border-slate-400"
+          >
+            Visit provider website
+          </a>
+        </div>
+
         <section class="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 class="text-lg font-semibold text-slate-950">Cylinder services</h2>
-          <div v-if="services.length" class="mt-4 flex flex-wrap gap-2">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Evidence-backed categories</p>
+            <h2 class="mt-1 text-lg font-semibold text-slate-950">Cylinder services</h2>
+          </div>
+
+          <div v-if="services.length" class="mt-4 grid gap-3 sm:grid-cols-2">
             <NuxtLink
               v-for="service in services"
               :key="service.service_key"
               :to="'/services/' + service.service_key"
-              class="rounded-full bg-teal-50 px-3 py-1.5 text-sm font-medium text-teal-800 hover:bg-teal-100"
+              class="rounded-xl border border-slate-200 bg-slate-50 p-4 hover:border-teal-300 hover:bg-teal-50"
             >
-              {{ serviceLabel(service.service_key) }}
+              <p class="font-semibold text-slate-950">{{ serviceLabel(service.service_key) }}</p>
+              <p class="mt-1 text-xs font-medium text-slate-500">
+                {{ service.status === 'provider_confirmed' ? 'Provider confirmed' : 'Source verified' }}
+              </p>
             </NuxtLink>
           </div>
           <p v-else class="mt-3 text-sm text-slate-600">
             No public service labels are currently available.
+          </p>
+
+          <p class="mt-4 text-xs leading-5 text-slate-500">
+            Service categories are published only when Cylinder Atlas has current supporting evidence or a reviewed provider confirmation. Confirm cylinder-specific capabilities directly with the provider.
           </p>
         </section>
 
@@ -139,7 +181,7 @@ useHead({
           <h2 class="text-lg font-semibold text-slate-950">Facility details</h2>
           <dl class="mt-4 grid gap-5 sm:grid-cols-2">
             <div>
-              <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Address</dt>
+              <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Facility address</dt>
               <dd class="mt-1 text-sm leading-6 text-slate-800">{{ address }}</dd>
             </div>
             <div>
@@ -169,32 +211,69 @@ useHead({
             </div>
           </dl>
         </section>
+
+        <section class="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h2 class="text-lg font-semibold text-slate-950">How this listing is sourced</h2>
+          <div class="mt-5 grid gap-5 sm:grid-cols-2">
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Regulatory foundation</p>
+              <p class="mt-1 text-sm leading-6 text-slate-700">
+                Cylinder Atlas starts with PHMSA cylinder requalifier data tied to RIN {{ facility.rin }}.
+                <span v-if="sourceEffectiveDate"> Source record date: {{ sourceEffectiveDate }}.</span>
+              </p>
+            </div>
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Current identity</p>
+              <p class="mt-1 text-sm leading-6 text-slate-700">
+                The current business identity and facility location were reconciled before this listing was published.
+              </p>
+            </div>
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Service evidence</p>
+              <p class="mt-1 text-sm leading-6 text-slate-700">
+                Public service categories require current customer-facing evidence or reviewed provider confirmation.
+              </p>
+            </div>
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Last checked</p>
+              <p class="mt-1 text-sm leading-6 text-slate-700">
+                {{ verifiedDate || 'Verification date unavailable' }}
+              </p>
+            </div>
+          </div>
+
+          <p class="mt-5 border-t border-slate-200 pt-4 text-xs leading-5 text-slate-500">
+            Cylinder Atlas does not certify or approve requalification facilities. PHMSA is the regulatory source for RIN information; Cylinder Atlas adds current business and service evidence for directory use.
+          </p>
+        </section>
       </div>
 
-      <aside class="h-fit rounded-2xl border border-teal-200 bg-teal-50 p-6">
-        <p class="text-sm font-semibold text-teal-950">Why this listing is published</p>
-        <p class="mt-3 text-sm leading-6 text-teal-900">
-          Cylinder Atlas starts with PHMSA requalifier data, then requires a current facility identity, customer-facing service evidence, and no unresolved address or identity conflict before publication.
-        </p>
+      <aside class="h-fit space-y-4 lg:sticky lg:top-6">
+        <section class="rounded-2xl border border-teal-200 bg-teal-50 p-6">
+          <p class="text-sm font-semibold text-teal-950">Why this listing is public</p>
+          <p class="mt-3 text-sm leading-6 text-teal-900">
+            It cleared the current Cylinder Atlas publication gate: PHMSA hydrostatic authorization, matched facility identity, active business status, outside-customer access, evidence-backed service, and no unresolved identity or location conflict.
+          </p>
 
-        <dl class="mt-5 space-y-4 border-t border-teal-200 pt-5">
-          <div>
-            <dt class="text-xs font-semibold uppercase tracking-wide text-teal-700">Regulatory identifier</dt>
-            <dd class="mt-1 text-sm font-semibold text-teal-950">RIN {{ facility.rin }}</dd>
-          </div>
-          <div v-if="verifiedDate">
-            <dt class="text-xs font-semibold uppercase tracking-wide text-teal-700">Last verified</dt>
-            <dd class="mt-1 text-sm font-semibold text-teal-950">{{ verifiedDate }}</dd>
-          </div>
-        </dl>
+          <dl class="mt-5 space-y-4 border-t border-teal-200 pt-5">
+            <div>
+              <dt class="text-xs font-semibold uppercase tracking-wide text-teal-700">PHMSA-listed RIN</dt>
+              <dd class="mt-1 text-sm font-semibold text-teal-950">{{ facility.rin }}</dd>
+            </div>
+            <div v-if="verifiedDate">
+              <dt class="text-xs font-semibold uppercase tracking-wide text-teal-700">Last checked</dt>
+              <dd class="mt-1 text-sm font-semibold text-teal-950">{{ verifiedDate }}</dd>
+            </div>
+          </dl>
 
-        <p class="mt-5 text-xs leading-5 text-teal-800">
-          Verify service details directly with the provider before visiting or shipping a cylinder.
-        </p>
+          <p class="mt-5 text-xs leading-5 text-teal-800">
+            Verify service details, pricing, hours, and turnaround directly with the provider before visiting or shipping a cylinder.
+          </p>
+        </section>
 
-        <div class="mt-6 border-t border-teal-200 pt-5">
-          <p class="text-sm font-semibold text-teal-950">Manage this listing</p>
-          <p class="mt-2 text-xs leading-5 text-teal-800">
+        <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <p class="text-sm font-semibold text-slate-950">Manage this listing</p>
+          <p class="mt-2 text-xs leading-5 text-slate-600">
             Provider claims and corrections are reviewed before they change public listing data.
           </p>
           <div class="mt-4 grid gap-2">
@@ -206,12 +285,12 @@ useHead({
             </NuxtLink>
             <NuxtLink
               :to="correctionPath"
-              class="rounded-lg border border-teal-300 bg-white px-4 py-2.5 text-center text-sm font-semibold text-teal-900 hover:border-teal-400"
+              class="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-center text-sm font-semibold text-slate-800 hover:border-slate-400"
             >
               Report or correct listing
             </NuxtLink>
           </div>
-        </div>
+        </section>
       </aside>
     </div>
   </main>
