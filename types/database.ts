@@ -1,1 +1,700 @@
-{"types":"export type Json =\n  | string\n  | number\n  | boolean\n  | null\n  | { [key: string]: Json | undefined }\n  | Json[]\n\nexport type Database = {\n  // Allows to automatically instantiate createClient with right options\n  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)\n  __InternalSupabase: {\n    PostgrestVersion: \"14.5\"\n  }\n  public: {\n    Tables: {\n      admin_users: {\n        Row: {\n          created_at: string\n          user_id: string\n        }\n        Insert: {\n          created_at?: string\n          user_id: string\n        }\n        Update: {\n          created_at?: string\n          user_id?: string\n        }\n        Relationships: []\n      }\n      claims: {\n        Row: {\n          created_at: string\n          facility_id: string\n          id: string\n          reviewed_at: string | null\n          reviewed_by: string | null\n          status: Database[\"public\"][\"Enums\"][\"claim_status_enum\"]\n          updated_at: string\n          user_id: string\n          verification_method: string | null\n        }\n        Insert: {\n          created_at?: string\n          facility_id: string\n          id?: string\n          reviewed_at?: string | null\n          reviewed_by?: string | null\n          status?: Database[\"public\"][\"Enums\"][\"claim_status_enum\"]\n          updated_at?: string\n          user_id: string\n          verification_method?: string | null\n        }\n        Update: {\n          created_at?: string\n          facility_id?: string\n          id?: string\n          reviewed_at?: string | null\n          reviewed_by?: string | null\n          status?: Database[\"public\"][\"Enums\"][\"claim_status_enum\"]\n          updated_at?: string\n          user_id?: string\n          verification_method?: string | null\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"claims_facility_id_fkey\"\n            columns: [\"facility_id\"]\n            isOneToOne: false\n            referencedRelation: \"facilities\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      companies: {\n        Row: {\n          canonical_name: string\n          created_at: string\n          id: string\n          legal_name: string | null\n          updated_at: string\n          website_domain: string | null\n        }\n        Insert: {\n          canonical_name: string\n          created_at?: string\n          id?: string\n          legal_name?: string | null\n          updated_at?: string\n          website_domain?: string | null\n        }\n        Update: {\n          canonical_name?: string\n          created_at?: string\n          id?: string\n          legal_name?: string | null\n          updated_at?: string\n          website_domain?: string | null\n        }\n        Relationships: []\n      }\n      corrections: {\n        Row: {\n          created_at: string\n          facility_id: string\n          field_name: string\n          id: string\n          proposed_value: Json\n          status: Database[\"public\"][\"Enums\"][\"correction_status_enum\"]\n          updated_at: string\n          user_id: string | null\n        }\n        Insert: {\n          created_at?: string\n          facility_id: string\n          field_name: string\n          id?: string\n          proposed_value: Json\n          status?: Database[\"public\"][\"Enums\"][\"correction_status_enum\"]\n          updated_at?: string\n          user_id?: string | null\n        }\n        Update: {\n          created_at?: string\n          facility_id?: string\n          field_name?: string\n          id?: string\n          proposed_value?: Json\n          status?: Database[\"public\"][\"Enums\"][\"correction_status_enum\"]\n          updated_at?: string\n          user_id?: string | null\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"corrections_facility_id_fkey\"\n            columns: [\"facility_id\"]\n            isOneToOne: false\n            referencedRelation: \"facilities\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      enrichment_runs: {\n        Row: {\n          algorithm_version: string\n          completed_at: string | null\n          created_at: string\n          id: string\n          name: string\n          notes: string | null\n          sample_size: number | null\n          scope: Json\n          started_at: string | null\n          status: Database[\"public\"][\"Enums\"][\"enrichment_run_status_enum\"]\n        }\n        Insert: {\n          algorithm_version: string\n          completed_at?: string | null\n          created_at?: string\n          id?: string\n          name: string\n          notes?: string | null\n          sample_size?: number | null\n          scope?: Json\n          started_at?: string | null\n          status?: Database[\"public\"][\"Enums\"][\"enrichment_run_status_enum\"]\n        }\n        Update: {\n          algorithm_version?: string\n          completed_at?: string | null\n          created_at?: string\n          id?: string\n          name?: string\n          notes?: string | null\n          sample_size?: number | null\n          scope?: Json\n          started_at?: string | null\n          status?: Database[\"public\"][\"Enums\"][\"enrichment_run_status_enum\"]\n        }\n        Relationships: []\n      }\n      evidence: {\n        Row: {\n          captured_at: string\n          evidence_type: Database[\"public\"][\"Enums\"][\"evidence_type_enum\"]\n          facility_id: string\n          id: string\n          summary: string\n          supports_field: string\n          url: string | null\n        }\n        Insert: {\n          captured_at?: string\n          evidence_type: Database[\"public\"][\"Enums\"][\"evidence_type_enum\"]\n          facility_id: string\n          id?: string\n          summary: string\n          supports_field: string\n          url?: string | null\n        }\n        Update: {\n          captured_at?: string\n          evidence_type?: Database[\"public\"][\"Enums\"][\"evidence_type_enum\"]\n          facility_id?: string\n          id?: string\n          summary?: string\n          supports_field?: string\n          url?: string | null\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"evidence_facility_id_fkey\"\n            columns: [\"facility_id\"]\n            isOneToOne: false\n            referencedRelation: \"facilities\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      facilities: {\n        Row: {\n          candidate_type_hint: string | null\n          city: string\n          commercial_status: Database[\"public\"][\"Enums\"][\"commercial_status_enum\"]\n          company_id: string | null\n          created_at: string\n          display_address: string | null\n          display_name: string | null\n          enrichment_run_id: string | null\n          enrichment_version: string | null\n          id: string\n          identity_confidence: number\n          last_enriched_at: string | null\n          manual_review_reason: string | null\n          phmsa_address: string\n          phmsa_name: string\n          phone: string | null\n          pipeline_status: string\n          postal_code: string | null\n          publish_status: Database[\"public\"][\"Enums\"][\"publish_status_enum\"]\n          rin: string\n          source_effective_date: string | null\n          source_row_count: number\n          state: string\n          updated_at: string\n          verified_at: string | null\n          website_url: string | null\n        }\n        Insert: {\n          candidate_type_hint?: string | null\n          city: string\n          commercial_status?: Database[\"public\"][\"Enums\"][\"commercial_status_enum\"]\n          company_id?: string | null\n          created_at?: string\n          display_address?: string | null\n          display_name?: string | null\n          enrichment_run_id?: string | null\n          enrichment_version?: string | null\n          id?: string\n          identity_confidence?: number\n          last_enriched_at?: string | null\n          manual_review_reason?: string | null\n          phmsa_address: string\n          phmsa_name: string\n          phone?: string | null\n          pipeline_status?: string\n          postal_code?: string | null\n          publish_status?: Database[\"public\"][\"Enums\"][\"publish_status_enum\"]\n          rin: string\n          source_effective_date?: string | null\n          source_row_count?: number\n          state: string\n          updated_at?: string\n          verified_at?: string | null\n          website_url?: string | null\n        }\n        Update: {\n          candidate_type_hint?: string | null\n          city?: string\n          commercial_status?: Database[\"public\"][\"Enums\"][\"commercial_status_enum\"]\n          company_id?: string | null\n          created_at?: string\n          display_address?: string | null\n          display_name?: string | null\n          enrichment_run_id?: string | null\n          enrichment_version?: string | null\n          id?: string\n          identity_confidence?: number\n          last_enriched_at?: string | null\n          manual_review_reason?: string | null\n          phmsa_address?: string\n          phmsa_name?: string\n          phone?: string | null\n          pipeline_status?: string\n          postal_code?: string | null\n          publish_status?: Database[\"public\"][\"Enums\"][\"publish_status_enum\"]\n          rin?: string\n          source_effective_date?: string | null\n          source_row_count?: number\n          state?: string\n          updated_at?: string\n          verified_at?: string | null\n          website_url?: string | null\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"facilities_company_id_fkey\"\n            columns: [\"company_id\"]\n            isOneToOne: false\n            referencedRelation: \"companies\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"facilities_enrichment_run_id_fkey\"\n            columns: [\"enrichment_run_id\"]\n            isOneToOne: false\n            referencedRelation: \"enrichment_runs\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      facility_enrichment_results: {\n        Row: {\n          business_status: Database[\"public\"][\"Enums\"][\"business_status_enum\"]\n          checked_at: string\n          current_address: string | null\n          current_name: string | null\n          decision: Database[\"public\"][\"Enums\"][\"publish_status_enum\"]\n          evidence_summary: string | null\n          facility_id: string\n          id: string\n          identity_confidence: number\n          identity_match: Database[\"public\"][\"Enums\"][\"identity_match_enum\"]\n          manual_review_reason: string | null\n          raw_result: Json\n          run_id: string\n          serves_external_customers: Database[\"public\"][\"Enums\"][\"external_customer_status_enum\"]\n          service_confidence: number\n          service_keys: string[]\n        }\n        Insert: {\n          business_status?: Database[\"public\"][\"Enums\"][\"business_status_enum\"]\n          checked_at?: string\n          current_address?: string | null\n          current_name?: string | null\n          decision?: Database[\"public\"][\"Enums\"][\"publish_status_enum\"]\n          evidence_summary?: string | null\n          facility_id: string\n          id?: string\n          identity_confidence?: number\n          identity_match?: Database[\"public\"][\"Enums\"][\"identity_match_enum\"]\n          manual_review_reason?: string | null\n          raw_result?: Json\n          run_id: string\n          serves_external_customers?: Database[\"public\"][\"Enums\"][\"external_customer_status_enum\"]\n          service_confidence?: number\n          service_keys?: string[]\n        }\n        Update: {\n          business_status?: Database[\"public\"][\"Enums\"][\"business_status_enum\"]\n          checked_at?: string\n          current_address?: string | null\n          current_name?: string | null\n          decision?: Database[\"public\"][\"Enums\"][\"publish_status_enum\"]\n          evidence_summary?: string | null\n          facility_id?: string\n          id?: string\n          identity_confidence?: number\n          identity_match?: Database[\"public\"][\"Enums\"][\"identity_match_enum\"]\n          manual_review_reason?: string | null\n          raw_result?: Json\n          run_id?: string\n          serves_external_customers?: Database[\"public\"][\"Enums\"][\"external_customer_status_enum\"]\n          service_confidence?: number\n          service_keys?: string[]\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"facility_enrichment_results_facility_id_fkey\"\n            columns: [\"facility_id\"]\n            isOneToOne: false\n            referencedRelation: \"facilities\"\n            referencedColumns: [\"id\"]\n          },\n          {\n            foreignKeyName: \"facility_enrichment_results_run_id_fkey\"\n            columns: [\"run_id\"]\n            isOneToOne: false\n            referencedRelation: \"enrichment_runs\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      facility_services: {\n        Row: {\n          confidence: number\n          created_at: string\n          facility_id: string\n          id: string\n          service_key: string\n          status: Database[\"public\"][\"Enums\"][\"service_status_enum\"]\n          updated_at: string\n        }\n        Insert: {\n          confidence?: number\n          created_at?: string\n          facility_id: string\n          id?: string\n          service_key: string\n          status?: Database[\"public\"][\"Enums\"][\"service_status_enum\"]\n          updated_at?: string\n        }\n        Update: {\n          confidence?: number\n          created_at?: string\n          facility_id?: string\n          id?: string\n          service_key?: string\n          status?: Database[\"public\"][\"Enums\"][\"service_status_enum\"]\n          updated_at?: string\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"facility_services_facility_id_fkey\"\n            columns: [\"facility_id\"]\n            isOneToOne: false\n            referencedRelation: \"facilities\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n      source_records: {\n        Row: {\n          captured_at: string\n          effective_date: string | null\n          facility_id: string\n          hydrostatic_authorized: boolean\n          id: string\n          raw_payload: Json\n          source: string\n        }\n        Insert: {\n          captured_at?: string\n          effective_date?: string | null\n          facility_id: string\n          hydrostatic_authorized?: boolean\n          id?: string\n          raw_payload: Json\n          source: string\n        }\n        Update: {\n          captured_at?: string\n          effective_date?: string | null\n          facility_id?: string\n          hydrostatic_authorized?: boolean\n          id?: string\n          raw_payload?: Json\n          source?: string\n        }\n        Relationships: [\n          {\n            foreignKeyName: \"source_records_facility_id_fkey\"\n            columns: [\"facility_id\"]\n            isOneToOne: false\n            referencedRelation: \"facilities\"\n            referencedColumns: [\"id\"]\n          },\n        ]\n      }\n    }\n    Views: {\n      [_ in never]: never\n    }\n    Functions: {\n      admin_claims_queue: {\n        Args: never\n        Returns: {\n          city: string\n          claim_created_at: string\n          claim_id: string\n          claim_status: Database[\"public\"][\"Enums\"][\"claim_status_enum\"]\n          claimant_email: string\n          claimant_user_id: string\n          display_address: string\n          display_name: string\n          facility_id: string\n          phmsa_address: string\n          phmsa_name: string\n          reviewed_at: string\n          reviewed_by: string\n          rin: string\n          state: string\n          verification_method: string\n        }[]\n      }\n      admin_review_claim: {\n        Args: {\n          p_claim_id: string\n          p_status: Database[\"public\"][\"Enums\"][\"claim_status_enum\"]\n        }\n        Returns: boolean\n      }\n      is_admin: { Args: never; Returns: boolean }\n    }\n    Enums: {\n      business_status_enum:\n        | \"active\"\n        | \"inactive\"\n        | \"internal\"\n        | \"not_public\"\n        | \"unknown\"\n      claim_status_enum: \"pending\" | \"verified\" | \"rejected\"\n      commercial_status_enum: \"yes\" | \"no\" | \"unknown\"\n      correction_status_enum: \"pending\" | \"accepted\" | \"rejected\"\n      enrichment_run_status_enum:\n        | \"queued\"\n        | \"running\"\n        | \"completed\"\n        | \"failed\"\n        | \"cancelled\"\n      evidence_type_enum:\n        | \"regulatory\"\n        | \"first_party\"\n        | \"business_registry\"\n        | \"directory\"\n        | \"provider_claim\"\n        | \"other\"\n      external_customer_status_enum: \"yes\" | \"no\" | \"unknown\"\n      identity_match_enum: \"matched\" | \"changed\" | \"conflict\" | \"unknown\"\n      publish_status_enum: \"publish\" | \"review\" | \"exclude\"\n      service_status_enum:\n        | \"verified\"\n        | \"inferred\"\n        | \"provider_confirmed\"\n        | \"rejected\"\n    }\n    CompositeTypes: {\n      [_ in never]: never\n    }\n  }\n}\n\ntype DatabaseWithoutInternals = Omit<Database, \"__InternalSupabase\">\n\ntype DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, \"public\">]\n\nexport type Tables<\n  DefaultSchemaTableNameOrOptions extends\n    | keyof (DefaultSchema[\"Tables\"] & DefaultSchema[\"Views\"])\n    | { schema: keyof DatabaseWithoutInternals },\n  TableName extends (DefaultSchemaTableNameOrOptions extends {\n    schema: keyof DatabaseWithoutInternals\n  }\n    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions[\"schema\"]][\"Tables\"] &\n        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions[\"schema\"]][\"Views\"])\n    : never) = never,\n> = DefaultSchemaTableNameOrOptions extends {\n  schema: keyof DatabaseWithoutInternals\n}\n  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions[\"schema\"]][\"Tables\"] &\n      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions[\"schema\"]][\"Views\"])[TableName] extends {\n      Row: infer R\n    }\n    ? R\n    : never\n  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema[\"Tables\"] &\n        DefaultSchema[\"Views\"])\n    ? (DefaultSchema[\"Tables\"] &\n        DefaultSchema[\"Views\"])[DefaultSchemaTableNameOrOptions] extends {\n        Row: infer R\n      }\n      ? R\n      : never\n    : never\n\nexport type TablesInsert<\n  DefaultSchemaTableNameOrOptions extends\n    | keyof DefaultSchema[\"Tables\"]\n    | { schema: keyof DatabaseWithoutInternals },\n  TableName extends (DefaultSchemaTableNameOrOptions extends {\n    schema: keyof DatabaseWithoutInternals\n  }\n    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions[\"schema\"]][\"Tables\"]\n    : never) = never,\n> = DefaultSchemaTableNameOrOptions extends {\n  schema: keyof DatabaseWithoutInternals\n}\n  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions[\"schema\"]][\"Tables\"][TableName] extends {\n      Insert: infer I\n    }\n    ? I\n    : never\n  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema[\"Tables\"]\n    ? DefaultSchema[\"Tables\"][DefaultSchemaTableNameOrOptions] extends {\n        Insert: infer I\n      }\n      ? I\n      : never\n    : never\n\nexport type TablesUpdate<\n  DefaultSchemaTableNameOrOptions extends\n    | keyof DefaultSchema[\"Tables\"]\n    | { schema: keyof DatabaseWithoutInternals },\n  TableName extends (DefaultSchemaTableNameOrOptions extends {\n    schema: keyof DatabaseWithoutInternals\n  }\n    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions[\"schema\"]][\"Tables\"]\n    : never) = never,\n> = DefaultSchemaTableNameOrOptions extends {\n  schema: keyof DatabaseWithoutInternals\n}\n  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions[\"schema\"]][\"Tables\"][TableName] extends {\n      Update: infer U\n    }\n    ? U\n    : never\n  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema[\"Tables\"]\n    ? DefaultSchema[\"Tables\"][DefaultSchemaTableNameOrOptions] extends {\n        Update: infer U\n      }\n      ? U\n      : never\n    : never\n\nexport type Enums<\n  DefaultSchemaEnumNameOrOptions extends\n    | keyof DefaultSchema[\"Enums\"]\n    | { schema: keyof DatabaseWithoutInternals },\n  EnumName extends (DefaultSchemaEnumNameOrOptions extends {\n    schema: keyof DatabaseWithoutInternals\n  }\n    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions[\"schema\"]][\"Enums\"]\n    : never) = never,\n> = DefaultSchemaEnumNameOrOptions extends {\n  schema: keyof DatabaseWithoutInternals\n}\n  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions[\"schema\"]][\"Enums\"][EnumName]\n  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema[\"Enums\"]\n    ? DefaultSchema[\"Enums\"][DefaultSchemaEnumNameOrOptions]\n    : never\n\nexport type CompositeTypes<\n  PublicCompositeTypeNameOrOptions extends\n    | keyof DefaultSchema[\"CompositeTypes\"]\n    | { schema: keyof DatabaseWithoutInternals },\n  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {\n    schema: keyof DatabaseWithoutInternals\n  }\n    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions[\"schema\"]][\"CompositeTypes\"]\n    : never) = never,\n> = PublicCompositeTypeNameOrOptions extends {\n  schema: keyof DatabaseWithoutInternals\n}\n  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions[\"schema\"]][\"CompositeTypes\"][CompositeTypeName]\n  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema[\"CompositeTypes\"]\n    ? DefaultSchema[\"CompositeTypes\"][PublicCompositeTypeNameOrOptions]\n    : never\n\nexport const Constants = {\n  public: {\n    Enums: {\n      business_status_enum: [\n        \"active\",\n        \"inactive\",\n        \"internal\",\n        \"not_public\",\n        \"unknown\",\n      ],\n      claim_status_enum: [\"pending\", \"verified\", \"rejected\"],\n      commercial_status_enum: [\"yes\", \"no\", \"unknown\"],\n      correction_status_enum: [\"pending\", \"accepted\", \"rejected\"],\n      enrichment_run_status_enum: [\n        \"queued\",\n        \"running\",\n        \"completed\",\n        \"failed\",\n        \"cancelled\",\n      ],\n      evidence_type_enum: [\n        \"regulatory\",\n        \"first_party\",\n        \"business_registry\",\n        \"directory\",\n        \"provider_claim\",\n        \"other\",\n      ],\n      external_customer_status_enum: [\"yes\", \"no\", \"unknown\"],\n      identity_match_enum: [\"matched\", \"changed\", \"conflict\", \"unknown\"],\n      publish_status_enum: [\"publish\", \"review\", \"exclude\"],\n      service_status_enum: [\n        \"verified\",\n        \"inferred\",\n        \"provider_confirmed\",\n        \"rejected\",\n      ],\n    },\n  },\n} as const\n"}
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
+
+export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.5"
+  }
+  public: {
+    Tables: {
+      admin_users: {
+        Row: {
+          created_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      claims: {
+        Row: {
+          created_at: string
+          facility_id: string
+          id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: Database["public"]["Enums"]["claim_status_enum"]
+          updated_at: string
+          user_id: string
+          verification_method: string | null
+        }
+        Insert: {
+          created_at?: string
+          facility_id: string
+          id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["claim_status_enum"]
+          updated_at?: string
+          user_id: string
+          verification_method?: string | null
+        }
+        Update: {
+          created_at?: string
+          facility_id?: string
+          id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["claim_status_enum"]
+          updated_at?: string
+          user_id?: string
+          verification_method?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "claims_facility_id_fkey"
+            columns: ["facility_id"]
+            isOneToOne: false
+            referencedRelation: "facilities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      companies: {
+        Row: {
+          canonical_name: string
+          created_at: string
+          id: string
+          legal_name: string | null
+          updated_at: string
+          website_domain: string | null
+        }
+        Insert: {
+          canonical_name: string
+          created_at?: string
+          id?: string
+          legal_name?: string | null
+          updated_at?: string
+          website_domain?: string | null
+        }
+        Update: {
+          canonical_name?: string
+          created_at?: string
+          id?: string
+          legal_name?: string | null
+          updated_at?: string
+          website_domain?: string | null
+        }
+        Relationships: []
+      }
+      corrections: {
+        Row: {
+          created_at: string
+          facility_id: string
+          field_name: string
+          id: string
+          proposed_value: Json
+          status: Database["public"]["Enums"]["correction_status_enum"]
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          facility_id: string
+          field_name: string
+          id?: string
+          proposed_value: Json
+          status?: Database["public"]["Enums"]["correction_status_enum"]
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          facility_id?: string
+          field_name?: string
+          id?: string
+          proposed_value?: Json
+          status?: Database["public"]["Enums"]["correction_status_enum"]
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "corrections_facility_id_fkey"
+            columns: ["facility_id"]
+            isOneToOne: false
+            referencedRelation: "facilities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      enrichment_runs: {
+        Row: {
+          algorithm_version: string
+          completed_at: string | null
+          created_at: string
+          id: string
+          name: string
+          notes: string | null
+          sample_size: number | null
+          scope: Json
+          started_at: string | null
+          status: Database["public"]["Enums"]["enrichment_run_status_enum"]
+        }
+        Insert: {
+          algorithm_version: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          notes?: string | null
+          sample_size?: number | null
+          scope?: Json
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["enrichment_run_status_enum"]
+        }
+        Update: {
+          algorithm_version?: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          sample_size?: number | null
+          scope?: Json
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["enrichment_run_status_enum"]
+        }
+        Relationships: []
+      }
+      evidence: {
+        Row: {
+          captured_at: string
+          evidence_type: Database["public"]["Enums"]["evidence_type_enum"]
+          facility_id: string
+          id: string
+          summary: string
+          supports_field: string
+          url: string | null
+        }
+        Insert: {
+          captured_at?: string
+          evidence_type: Database["public"]["Enums"]["evidence_type_enum"]
+          facility_id: string
+          id?: string
+          summary: string
+          supports_field: string
+          url?: string | null
+        }
+        Update: {
+          captured_at?: string
+          evidence_type?: Database["public"]["Enums"]["evidence_type_enum"]
+          facility_id?: string
+          id?: string
+          summary?: string
+          supports_field?: string
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evidence_facility_id_fkey"
+            columns: ["facility_id"]
+            isOneToOne: false
+            referencedRelation: "facilities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      facilities: {
+        Row: {
+          candidate_type_hint: string | null
+          city: string
+          commercial_status: Database["public"]["Enums"]["commercial_status_enum"]
+          company_id: string | null
+          created_at: string
+          display_address: string | null
+          display_name: string | null
+          enrichment_run_id: string | null
+          enrichment_version: string | null
+          id: string
+          identity_confidence: number
+          last_enriched_at: string | null
+          manual_review_reason: string | null
+          phmsa_address: string
+          phmsa_name: string
+          phone: string | null
+          pipeline_status: string
+          postal_code: string | null
+          publish_status: Database["public"]["Enums"]["publish_status_enum"]
+          rin: string
+          source_effective_date: string | null
+          source_row_count: number
+          state: string
+          updated_at: string
+          verified_at: string | null
+          website_url: string | null
+        }
+        Insert: {
+          candidate_type_hint?: string | null
+          city: string
+          commercial_status?: Database["public"]["Enums"]["commercial_status_enum"]
+          company_id?: string | null
+          created_at?: string
+          display_address?: string | null
+          display_name?: string | null
+          enrichment_run_id?: string | null
+          enrichment_version?: string | null
+          id?: string
+          identity_confidence?: number
+          last_enriched_at?: string | null
+          manual_review_reason?: string | null
+          phmsa_address: string
+          phmsa_name: string
+          phone?: string | null
+          pipeline_status?: string
+          postal_code?: string | null
+          publish_status?: Database["public"]["Enums"]["publish_status_enum"]
+          rin: string
+          source_effective_date?: string | null
+          source_row_count?: number
+          state: string
+          updated_at?: string
+          verified_at?: string | null
+          website_url?: string | null
+        }
+        Update: {
+          candidate_type_hint?: string | null
+          city?: string
+          commercial_status?: Database["public"]["Enums"]["commercial_status_enum"]
+          company_id?: string | null
+          created_at?: string
+          display_address?: string | null
+          display_name?: string | null
+          enrichment_run_id?: string | null
+          enrichment_version?: string | null
+          id?: string
+          identity_confidence?: number
+          last_enriched_at?: string | null
+          manual_review_reason?: string | null
+          phmsa_address?: string
+          phmsa_name?: string
+          phone?: string | null
+          pipeline_status?: string
+          postal_code?: string | null
+          publish_status?: Database["public"]["Enums"]["publish_status_enum"]
+          rin?: string
+          source_effective_date?: string | null
+          source_row_count?: number
+          state?: string
+          updated_at?: string
+          verified_at?: string | null
+          website_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "facilities_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "facilities_enrichment_run_id_fkey"
+            columns: ["enrichment_run_id"]
+            isOneToOne: false
+            referencedRelation: "enrichment_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      facility_enrichment_results: {
+        Row: {
+          business_status: Database["public"]["Enums"]["business_status_enum"]
+          checked_at: string
+          current_address: string | null
+          current_name: string | null
+          decision: Database["public"]["Enums"]["publish_status_enum"]
+          evidence_summary: string | null
+          facility_id: string
+          id: string
+          identity_confidence: number
+          identity_match: Database["public"]["Enums"]["identity_match_enum"]
+          manual_review_reason: string | null
+          raw_result: Json
+          run_id: string
+          serves_external_customers: Database["public"]["Enums"]["external_customer_status_enum"]
+          service_confidence: number
+          service_keys: string[]
+        }
+        Insert: {
+          business_status?: Database["public"]["Enums"]["business_status_enum"]
+          checked_at?: string
+          current_address?: string | null
+          current_name?: string | null
+          decision?: Database["public"]["Enums"]["publish_status_enum"]
+          evidence_summary?: string | null
+          facility_id: string
+          id?: string
+          identity_confidence?: number
+          identity_match?: Database["public"]["Enums"]["identity_match_enum"]
+          manual_review_reason?: string | null
+          raw_result?: Json
+          run_id: string
+          serves_external_customers?: Database["public"]["Enums"]["external_customer_status_enum"]
+          service_confidence?: number
+          service_keys?: string[]
+        }
+        Update: {
+          business_status?: Database["public"]["Enums"]["business_status_enum"]
+          checked_at?: string
+          current_address?: string | null
+          current_name?: string | null
+          decision?: Database["public"]["Enums"]["publish_status_enum"]
+          evidence_summary?: string | null
+          facility_id?: string
+          id?: string
+          identity_confidence?: number
+          identity_match?: Database["public"]["Enums"]["identity_match_enum"]
+          manual_review_reason?: string | null
+          raw_result?: Json
+          run_id?: string
+          serves_external_customers?: Database["public"]["Enums"]["external_customer_status_enum"]
+          service_confidence?: number
+          service_keys?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "facility_enrichment_results_facility_id_fkey"
+            columns: ["facility_id"]
+            isOneToOne: false
+            referencedRelation: "facilities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "facility_enrichment_results_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "enrichment_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      facility_services: {
+        Row: {
+          confidence: number
+          created_at: string
+          facility_id: string
+          id: string
+          service_key: string
+          status: Database["public"]["Enums"]["service_status_enum"]
+          updated_at: string
+        }
+        Insert: {
+          confidence?: number
+          created_at?: string
+          facility_id: string
+          id?: string
+          service_key: string
+          status?: Database["public"]["Enums"]["service_status_enum"]
+          updated_at?: string
+        }
+        Update: {
+          confidence?: number
+          created_at?: string
+          facility_id?: string
+          id?: string
+          service_key?: string
+          status?: Database["public"]["Enums"]["service_status_enum"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "facility_services_facility_id_fkey"
+            columns: ["facility_id"]
+            isOneToOne: false
+            referencedRelation: "facilities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      source_records: {
+        Row: {
+          captured_at: string
+          effective_date: string | null
+          facility_id: string
+          hydrostatic_authorized: boolean
+          id: string
+          raw_payload: Json
+          source: string
+        }
+        Insert: {
+          captured_at?: string
+          effective_date?: string | null
+          facility_id: string
+          hydrostatic_authorized?: boolean
+          id?: string
+          raw_payload: Json
+          source: string
+        }
+        Update: {
+          captured_at?: string
+          effective_date?: string | null
+          facility_id?: string
+          hydrostatic_authorized?: boolean
+          id?: string
+          raw_payload?: Json
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "source_records_facility_id_fkey"
+            columns: ["facility_id"]
+            isOneToOne: false
+            referencedRelation: "facilities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      admin_claims_queue: {
+        Args: never
+        Returns: {
+          city: string
+          claim_created_at: string
+          claim_id: string
+          claim_status: Database["public"]["Enums"]["claim_status_enum"]
+          claimant_email: string
+          claimant_user_id: string
+          display_address: string
+          display_name: string
+          facility_id: string
+          phmsa_address: string
+          phmsa_name: string
+          reviewed_at: string
+          reviewed_by: string
+          rin: string
+          state: string
+          verification_method: string
+        }[]
+      }
+      admin_review_claim: {
+        Args: {
+          p_claim_id: string
+          p_status: Database["public"]["Enums"]["claim_status_enum"]
+        }
+        Returns: boolean
+      }
+      is_admin: { Args: never; Returns: boolean }
+    }
+    Enums: {
+      business_status_enum:
+        | "active"
+        | "inactive"
+        | "internal"
+        | "not_public"
+        | "unknown"
+      claim_status_enum: "pending" | "verified" | "rejected"
+      commercial_status_enum: "yes" | "no" | "unknown"
+      correction_status_enum: "pending" | "accepted" | "rejected"
+      enrichment_run_status_enum:
+        | "queued"
+        | "running"
+        | "completed"
+        | "failed"
+        | "cancelled"
+      evidence_type_enum:
+        | "regulatory"
+        | "first_party"
+        | "business_registry"
+        | "directory"
+        | "provider_claim"
+        | "other"
+      external_customer_status_enum: "yes" | "no" | "unknown"
+      identity_match_enum: "matched" | "changed" | "conflict" | "unknown"
+      publish_status_enum: "publish" | "review" | "exclude"
+      service_status_enum:
+        | "verified"
+        | "inferred"
+        | "provider_confirmed"
+        | "rejected"
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
+}
+
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never) = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never) = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {
+      business_status_enum: [
+        "active",
+        "inactive",
+        "internal",
+        "not_public",
+        "unknown",
+      ],
+      claim_status_enum: ["pending", "verified", "rejected"],
+      commercial_status_enum: ["yes", "no", "unknown"],
+      correction_status_enum: ["pending", "accepted", "rejected"],
+      enrichment_run_status_enum: [
+        "queued",
+        "running",
+        "completed",
+        "failed",
+        "cancelled",
+      ],
+      evidence_type_enum: [
+        "regulatory",
+        "first_party",
+        "business_registry",
+        "directory",
+        "provider_claim",
+        "other",
+      ],
+      external_customer_status_enum: ["yes", "no", "unknown"],
+      identity_match_enum: ["matched", "changed", "conflict", "unknown"],
+      publish_status_enum: ["publish", "review", "exclude"],
+      service_status_enum: [
+        "verified",
+        "inferred",
+        "provider_confirmed",
+        "rejected",
+      ],
+    },
+  },
+} as const
