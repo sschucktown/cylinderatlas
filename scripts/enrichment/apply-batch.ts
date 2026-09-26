@@ -216,12 +216,12 @@ for (const record of payload.records) {
     enrichment_run_id: run.id,
     enrichment_version: run.algorithm_version,
     last_enriched_at: new Date().toISOString(),
+    verified_at: result.decision === 'publish' ? new Date().toISOString() : null,
   }
 
   if (result.decision === 'publish') {
     facilityUpdate.display_name = result.currentName ?? facility.phmsa_name
     facilityUpdate.display_address = result.currentAddress ?? facility.phmsa_address
-    facilityUpdate.verified_at = new Date().toISOString()
   }
 
   const { error: facilityError } = await supabase
