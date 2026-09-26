@@ -14,11 +14,28 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_users: {
+        Row: {
+          created_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       claims: {
         Row: {
           created_at: string
           facility_id: string
           id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
           status: Database["public"]["Enums"]["claim_status_enum"]
           updated_at: string
           user_id: string
@@ -28,6 +45,8 @@ export type Database = {
           created_at?: string
           facility_id: string
           id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           status?: Database["public"]["Enums"]["claim_status_enum"]
           updated_at?: string
           user_id: string
@@ -37,6 +56,8 @@ export type Database = {
           created_at?: string
           facility_id?: string
           id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           status?: Database["public"]["Enums"]["claim_status_enum"]
           updated_at?: string
           user_id?: string
@@ -120,6 +141,45 @@ export type Database = {
           },
         ]
       }
+      enrichment_runs: {
+        Row: {
+          algorithm_version: string
+          completed_at: string | null
+          created_at: string
+          id: string
+          name: string
+          notes: string | null
+          sample_size: number | null
+          scope: Json
+          started_at: string | null
+          status: Database["public"]["Enums"]["enrichment_run_status_enum"]
+        }
+        Insert: {
+          algorithm_version: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          notes?: string | null
+          sample_size?: number | null
+          scope?: Json
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["enrichment_run_status_enum"]
+        }
+        Update: {
+          algorithm_version?: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          sample_size?: number | null
+          scope?: Json
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["enrichment_run_status_enum"]
+        }
+        Relationships: []
+      }
       evidence: {
         Row: {
           captured_at: string
@@ -167,8 +227,11 @@ export type Database = {
           created_at: string
           display_address: string | null
           display_name: string | null
+          enrichment_run_id: string | null
+          enrichment_version: string | null
           id: string
           identity_confidence: number
+          last_enriched_at: string | null
           manual_review_reason: string | null
           phmsa_address: string
           phmsa_name: string
@@ -192,8 +255,11 @@ export type Database = {
           created_at?: string
           display_address?: string | null
           display_name?: string | null
+          enrichment_run_id?: string | null
+          enrichment_version?: string | null
           id?: string
           identity_confidence?: number
+          last_enriched_at?: string | null
           manual_review_reason?: string | null
           phmsa_address: string
           phmsa_name: string
@@ -217,8 +283,11 @@ export type Database = {
           created_at?: string
           display_address?: string | null
           display_name?: string | null
+          enrichment_run_id?: string | null
+          enrichment_version?: string | null
           id?: string
           identity_confidence?: number
+          last_enriched_at?: string | null
           manual_review_reason?: string | null
           phmsa_address?: string
           phmsa_name?: string
@@ -240,6 +309,85 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "facilities_enrichment_run_id_fkey"
+            columns: ["enrichment_run_id"]
+            isOneToOne: false
+            referencedRelation: "enrichment_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      facility_enrichment_results: {
+        Row: {
+          business_status: Database["public"]["Enums"]["business_status_enum"]
+          checked_at: string
+          current_address: string | null
+          current_name: string | null
+          decision: Database["public"]["Enums"]["publish_status_enum"]
+          evidence_summary: string | null
+          facility_id: string
+          id: string
+          identity_confidence: number
+          identity_match: Database["public"]["Enums"]["identity_match_enum"]
+          manual_review_reason: string | null
+          raw_result: Json
+          run_id: string
+          serves_external_customers: Database["public"]["Enums"]["external_customer_status_enum"]
+          service_confidence: number
+          service_keys: string[]
+        }
+        Insert: {
+          business_status?: Database["public"]["Enums"]["business_status_enum"]
+          checked_at?: string
+          current_address?: string | null
+          current_name?: string | null
+          decision?: Database["public"]["Enums"]["publish_status_enum"]
+          evidence_summary?: string | null
+          facility_id: string
+          id?: string
+          identity_confidence?: number
+          identity_match?: Database["public"]["Enums"]["identity_match_enum"]
+          manual_review_reason?: string | null
+          raw_result?: Json
+          run_id: string
+          serves_external_customers?: Database["public"]["Enums"]["external_customer_status_enum"]
+          service_confidence?: number
+          service_keys?: string[]
+        }
+        Update: {
+          business_status?: Database["public"]["Enums"]["business_status_enum"]
+          checked_at?: string
+          current_address?: string | null
+          current_name?: string | null
+          decision?: Database["public"]["Enums"]["publish_status_enum"]
+          evidence_summary?: string | null
+          facility_id?: string
+          id?: string
+          identity_confidence?: number
+          identity_match?: Database["public"]["Enums"]["identity_match_enum"]
+          manual_review_reason?: string | null
+          raw_result?: Json
+          run_id?: string
+          serves_external_customers?: Database["public"]["Enums"]["external_customer_status_enum"]
+          service_confidence?: number
+          service_keys?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "facility_enrichment_results_facility_id_fkey"
+            columns: ["facility_id"]
+            isOneToOne: false
+            referencedRelation: "facilities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "facility_enrichment_results_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "enrichment_runs"
             referencedColumns: ["id"]
           },
         ]
@@ -325,12 +473,52 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      admin_claims_queue: {
+        Args: never
+        Returns: {
+          city: string
+          claim_created_at: string
+          claim_id: string
+          claim_status: Database["public"]["Enums"]["claim_status_enum"]
+          claimant_email: string
+          claimant_user_id: string
+          display_address: string
+          display_name: string
+          facility_id: string
+          phmsa_address: string
+          phmsa_name: string
+          reviewed_at: string
+          reviewed_by: string
+          rin: string
+          state: string
+          verification_method: string
+        }[]
+      }
+      admin_review_claim: {
+        Args: {
+          p_claim_id: string
+          p_status: Database["public"]["Enums"]["claim_status_enum"]
+        }
+        Returns: boolean
+      }
+      is_admin: { Args: never; Returns: boolean }
     }
     Enums: {
+      business_status_enum:
+        | "active"
+        | "inactive"
+        | "internal"
+        | "not_public"
+        | "unknown"
       claim_status_enum: "pending" | "verified" | "rejected"
       commercial_status_enum: "yes" | "no" | "unknown"
       correction_status_enum: "pending" | "accepted" | "rejected"
+      enrichment_run_status_enum:
+        | "queued"
+        | "running"
+        | "completed"
+        | "failed"
+        | "cancelled"
       evidence_type_enum:
         | "regulatory"
         | "first_party"
@@ -338,6 +526,8 @@ export type Database = {
         | "directory"
         | "provider_claim"
         | "other"
+      external_customer_status_enum: "yes" | "no" | "unknown"
+      identity_match_enum: "matched" | "changed" | "conflict" | "unknown"
       publish_status_enum: "publish" | "review" | "exclude"
       service_status_enum:
         | "verified"
@@ -471,9 +661,23 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      business_status_enum: [
+        "active",
+        "inactive",
+        "internal",
+        "not_public",
+        "unknown",
+      ],
       claim_status_enum: ["pending", "verified", "rejected"],
       commercial_status_enum: ["yes", "no", "unknown"],
       correction_status_enum: ["pending", "accepted", "rejected"],
+      enrichment_run_status_enum: [
+        "queued",
+        "running",
+        "completed",
+        "failed",
+        "cancelled",
+      ],
       evidence_type_enum: [
         "regulatory",
         "first_party",
@@ -482,6 +686,8 @@ export const Constants = {
         "provider_claim",
         "other",
       ],
+      external_customer_status_enum: ["yes", "no", "unknown"],
+      identity_match_enum: ["matched", "changed", "conflict", "unknown"],
       publish_status_enum: ["publish", "review", "exclude"],
       service_status_enum: [
         "verified",
