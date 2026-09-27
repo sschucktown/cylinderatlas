@@ -28,9 +28,11 @@ interface BatchPayload {
   records: BatchRecord[]
 }
 
-const inputPath = process.argv[2]
+const args = process.argv.slice(2)
+const dryRun = args.includes('--dry-run')
+const inputPath = args.find((arg) => !arg.startsWith('--'))
 if (!inputPath) {
-  throw new Error('Usage: npm run enrich:apply -- <evidence-batch.json>')
+  throw new Error('Usage: npm run enrich:apply -- <evidence-batch.json> [--dry-run]')
 }
 
 const payload = JSON.parse(await readFile(inputPath, 'utf8')) as BatchPayload
@@ -79,6 +81,17 @@ if (missingRins.length) {
 }
 
 const applied: Array<{ rin: string; decision: string }> = []
+const preview: Array<{
+  rin: string
+  decision: string
+  identityCorroborated: boolean
+  identityConfidence: number
+  serviceConfidence: number
+  serviceKeys: string[]
+  evidenceUrl: string | null
+  corroborationEvidenceUrl: string | null
+  manualReviewReason: string | null
+}> = []
 
 for (const record of payload.records) {
   const facility = facilitiesByRin.get(record.rin)!
@@ -93,12 +106,25 @@ for (const record of payload.records) {
     candidate_type_hint: facility.candidate_type_hint,
   }
 
-  const identityCorroborated =
-    Boolean(record.evidenceType && IDENTITY_CORROBORATION_TYPES.has(record.evidenceType)) ||
-    Boolean(
+  const isHarvesterPayload = payload.complete === true
+  const strongPrimaryEvidence = Boolean(
+    record.evidenceUrl &&
+      record.evidenceType &&
+      IDENTITY_CORROBORATION_TYPES.has(record.evidenceType),
+  )
+  const strongCorroborationEvidence = Boolean(
+    record.corroborationEvidenceUrl &&
       record.corroborationEvidenceType &&
-        IDENTITY_CORROBORATION_TYPES.has(record.corroborationEvidenceType),
-    )
+      IDENTITY_CORROBORATION_TYPES.has(record.corroborationEvidenceType),
+  )
+
+  // Harvester packets reserve the primary source for service/customer evidence and
+  // the corroboration source for current identity/location/business status. Require
+  // the distinct corroboration source plus extracted current identity/location before
+  // allowing the deterministic publish gate to clear.
+  const identityCorroborated = isHarvesterPayload
+    ? Boolean(strongCorroborationEvidence && record.currentName && record.currentAddress)
+    : strongPrimaryEvidence || strongCorroborationEvidence
 
   const result = decide(candidate, {
     ...record,
@@ -107,6 +133,23 @@ for (const record of payload.records) {
       (url): url is string => Boolean(url),
     ),
   })
+
+  applied.push({ rin: facility.rin, decision: result.decision })
+
+  if (dryRun) {
+    preview.push({
+      rin: facility.rin,
+      decision: result.decision,
+      identityCorroborated,
+      identityConfidence: result.identityConfidence,
+      serviceConfidence: result.serviceConfidence,
+      serviceKeys: result.serviceKeys,
+      evidenceUrl: record.evidenceUrl ?? null,
+      corroborationEvidenceUrl: record.corroborationEvidenceUrl ?? null,
+      manualReviewReason: result.manualReviewReason ?? null,
+    })
+    continue
+  }
 
   const { error: resultError } = await supabase
     .from('facility_enrichment_results')
@@ -140,9 +183,20 @@ for (const record of payload.records) {
 
   if (resultError) throw resultError
 
-  // Only evidence-supplied service keys become verified rows. Heuristic suggestions
-  // may help manual review, but they must never become verified service evidence.
-  for (const serviceKey of record.serviceKeys) {
+  // A service can be verified only after the evidence packet cleanly maps the
+  // current business back to this exact RIN facility. This prevents service evidence
+  // for a moved/renamed/conflicting business from being attached to the wrong facility.
+  const verifiedServiceKeys =
+    record.identityMatch === 'matched' &&
+    result.identityConfidence >= 0.85 &&
+    identityCorroborated &&
+    result.serviceConfidence >= 0.85 &&
+    record.evidenceUrl &&
+    record.evidenceType
+      ? record.serviceKeys
+      : []
+
+  for (const serviceKey of verifiedServiceKeys) {
     const { error: serviceError } = await supabase
       .from('facility_services')
       .upsert(
@@ -237,7 +291,6 @@ for (const record of payload.records) {
 
   if (facilityError) throw facilityError
 
-  applied.push({ rin: facility.rin, decision: result.decision })
 }
 
 const counts = applied.reduce<Record<string, number>>((acc, row) => {
@@ -250,8 +303,17 @@ console.log(
     {
       run: run.name,
       batch: payload.batch,
-      applied: applied.length,
+      dryRun,
+      applied: dryRun ? 0 : applied.length,
+      evaluated: applied.length,
       decisions: counts,
+      ...(dryRun
+        ? {
+            publishCandidates: preview.filter((row) => row.decision === 'publish'),
+            reviewCandidates: preview.filter((row) => row.decision === 'review'),
+            excludeCandidates: preview.filter((row) => row.decision === 'exclude'),
+          }
+        : {}),
     },
     null,
     2,
