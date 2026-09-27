@@ -64,6 +64,7 @@ interface HarvestPayload {
   model: string
   generatedAt: string
   complete: boolean
+  estimatedCostUsd: number
   sourceBatch: {
     hint: string | null
     generatedAt: string
@@ -164,8 +165,31 @@ if (!inputPath) {
 const outputPath = readFlag('output') ?? 'tmp/enrichment-harvested-batch.json'
 const concurrency = Math.min(readPositiveIntFlag('concurrency', 5), 10)
 const maxAttempts = Math.min(readPositiveIntFlag('attempts', 3), 5)
-const model = process.env.OPENAI_ENRICHMENT_MODEL ?? 'gpt-5.6-terra'
+const costSampleSize = Math.min(readPositiveIntFlag('cost-sample', 10), 50)
+const model = process.env.OPENAI_ENRICHMENT_MODEL ?? 'gpt-6-luna'
 const apiKey = process.env.OPENAI_API_KEY
+
+function readPositiveFloatFlag(name: string, fallback: number) {
+  const raw = readFlag(name)
+  if (!raw) return fallback
+  const parsed = Number.parseFloat(raw)
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    throw new Error('--' + name + ' must be a positive number')
+  }
+  return parsed
+}
+
+const maxProjectedCostUsd = readPositiveFloatFlag('max-projected-cost', 2)
+
+const MODEL_PRICING_USD_PER_MTOK: Record<
+  string,
+  { input: number; output: number }
+> = {
+  'gpt-6-luna': { input: 0.1, output: 0.5 },
+  'gpt-5.6-luna': { input: 0.2, output: 1.2 },
+  'gpt-5.6-terra': { input: 2, output: 12 },
+}
+const WEB_SEARCH_USD_PER_CALL = 0.01
 
 if (!apiKey) {
   throw new Error(
@@ -190,6 +214,21 @@ const usage: UsageTotals = {
   inputTokens: 0,
   outputTokens: 0,
   totalTokens: 0,
+}
+
+function estimateCostUsd(totals: UsageTotals) {
+  const rates = MODEL_PRICING_USD_PER_MTOK[model]
+  if (!rates) return Number.NaN
+
+  return (
+    (totals.inputTokens / 1_000_000) * rates.input +
+    (totals.outputTokens / 1_000_000) * rates.output +
+    totals.webSearchCalls * WEB_SEARCH_USD_PER_CALL
+  )
+}
+
+function roundUsd(value: number) {
+  return Number.isFinite(value) ? Number(value.toFixed(4)) : value
 }
 
 async function loadCheckpoint() {
@@ -235,6 +274,7 @@ function createPayload(complete: boolean): HarvestPayload {
     model,
     generatedAt: new Date().toISOString(),
     complete,
+    estimatedCostUsd: roundUsd(estimateCostUsd(usage)),
     sourceBatch: {
       hint: input.hint ?? null,
       generatedAt: input.generatedAt,
@@ -272,7 +312,8 @@ function buildPrompt(candidate: FacilityCandidate) {
     'PHMSA authorization is already known. Your job is current-business evidence collection and fact extraction only. You do NOT decide publish/review/exclude.',
     '',
     'Research requirements:',
-    '- Search current sources. Prefer first-party location/service pages, state or regulatory records, and business registries. Use general directories only as supporting evidence.',
+    '- Perform exactly ONE web search call. Use the sources returned by that search only. Do not attempt a second search. If one search is insufficient, return unknown values and conservative confidence.',
+    '- Prefer first-party location/service pages, state or regulatory records, and business registries. Use general directories only as supporting evidence.',
     '- Treat the RIN as facility-specific. Never assume a RIN moved with a business.',
     '- identityMatch=matched only when current evidence cleanly reconciles the current business to the exact PHMSA facility/location.',
     '- If a current business address materially differs, a suite differs without reconciliation, or an acquisition/rename lineage is unclear, use changed or conflict rather than matched.',
@@ -490,8 +531,10 @@ async function researchCandidate(candidate: FacilityCandidate) {
         },
         body: JSON.stringify({
           model,
-          reasoning: { effort: 'low' },
-          tools: [{ type: 'web_search', search_context_size: 'medium' }],
+          reasoning: { effort: 'none' },
+          max_tool_calls: 1,
+          max_output_tokens: 800,
+          tools: [{ type: 'web_search', search_context_size: 'low' }],
           tool_choice: 'required',
           include: ['web_search_call.action.sources'],
           text: {
@@ -569,33 +612,84 @@ await loadCheckpoint()
 const pendingCandidates = input.candidates.filter(
   (candidate) => !recordByRin.has(candidate.rin),
 )
+const resumedCount = input.candidates.length - pendingCandidates.length
 
 await writeJsonAtomic(outputPath, createPayload(false))
 
-await runWithConcurrency(pendingCandidates, concurrency, async (candidate) => {
-  try {
-    const record = await researchCandidate(candidate)
-    recordByRin.set(candidate.rin, record)
-    failureByRin.delete(candidate.rin)
-  } catch (error) {
-    failureByRin.set(candidate.rin, {
-      rin: candidate.rin,
-      error: error instanceof Error ? error.message : String(error),
-    })
-  }
+async function harvestCandidates(candidates: FacilityCandidate[]) {
+  await runWithConcurrency(candidates, concurrency, async (candidate) => {
+    try {
+      const record = await researchCandidate(candidate)
+      recordByRin.set(candidate.rin, record)
+      failureByRin.delete(candidate.rin)
+    } catch (error) {
+      failureByRin.set(candidate.rin, {
+        rin: candidate.rin,
+        error: error instanceof Error ? error.message : String(error),
+      })
+    }
 
-  await scheduleCheckpoint()
+    await scheduleCheckpoint()
 
-  console.log(
-    JSON.stringify({
-      rin: candidate.rin,
-      completed: recordByRin.size,
-      failed: failureByRin.size,
-      total: input.candidates.length,
-    }),
+    console.log(
+      JSON.stringify({
+        rin: candidate.rin,
+        completed: recordByRin.size,
+        failed: failureByRin.size,
+        total: input.candidates.length,
+        estimatedCostUsd: roundUsd(estimateCostUsd(usage)),
+      }),
+    )
+  })
+}
+
+const sampleCandidates = pendingCandidates.slice(0, costSampleSize)
+const remainingCandidates = pendingCandidates.slice(sampleCandidates.length)
+const recordsBeforeSample = recordByRin.size
+const failuresBeforeSample = failureByRin.size
+const costBeforeSample = estimateCostUsd(usage)
+
+await harvestCandidates(sampleCandidates)
+await checkpointChain
+
+const sampleSuccesses = recordByRin.size - recordsBeforeSample
+const sampleFailures = failureByRin.size - failuresBeforeSample
+const sampleCostUsd = estimateCostUsd(usage) - costBeforeSample
+const projectedCostUsd =
+  sampleCandidates.length > 0 && Number.isFinite(sampleCostUsd)
+    ? costBeforeSample +
+      (sampleCostUsd / sampleCandidates.length) * pendingCandidates.length
+    : Number.NaN
+
+if (
+  remainingCandidates.length > 0 &&
+  (sampleSuccesses === 0 ||
+    (Number.isFinite(projectedCostUsd) && projectedCostUsd > maxProjectedCostUsd))
+) {
+  await writeJsonAtomic(outputPath, createPayload(false))
+  const firstFailure = [...failureByRin.values()][0]?.error ?? null
+  console.error(
+    JSON.stringify(
+      {
+        stopped: sampleSuccesses === 0 ? 'sample_health_check_failed' : 'projected_cost_limit',
+        model,
+        sampled: sampleCandidates.length,
+        sampleSuccesses,
+        sampleFailures,
+        sampleCostUsd: roundUsd(sampleCostUsd),
+        projectedCostUsd: roundUsd(projectedCostUsd),
+        maxProjectedCostUsd,
+        firstFailure,
+        output: outputPath,
+      },
+      null,
+      2,
+    ),
   )
-})
+  process.exit(2)
+}
 
+await harvestCandidates(remainingCandidates)
 await checkpointChain
 await writeJsonAtomic(outputPath, createPayload(true))
 
@@ -607,9 +701,18 @@ console.log(
       model,
       output: outputPath,
       candidates: input.candidates.length,
-      resumed: input.candidates.length - pendingCandidates.length,
+      resumed: resumedCount,
       harvested: recordByRin.size,
       failures: failureByRin.size,
+      estimatedCostUsd: roundUsd(estimateCostUsd(usage)),
+      sample: {
+        size: sampleCandidates.length,
+        successes: sampleSuccesses,
+        failures: sampleFailures,
+        costUsd: roundUsd(sampleCostUsd),
+        projectedCostUsd: roundUsd(projectedCostUsd),
+        maxProjectedCostUsd,
+      },
       usage,
     },
     null,
