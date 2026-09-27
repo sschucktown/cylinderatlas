@@ -181,7 +181,7 @@ if (!input.runName || !Array.isArray(input.candidates) || !input.candidates.leng
 
 const batch =
   readFlag('batch') ??
-  \`harvest-\${input.hint ?? 'mixed'}-\${new Date().toISOString().replace(/[:.]/g, '-')}\`
+  `harvest-${input.hint ?? 'mixed'}-${input.generatedAt.replace(/[:.]/g, '-')}`
 
 const recordByRin = new Map<string, HarvestedRecord>()
 const failureByRin = new Map<string, HarvestFailure>()
@@ -249,7 +249,7 @@ function createPayload(complete: boolean): HarvestPayload {
 
 async function writeJsonAtomic(path: string, value: unknown) {
   await mkdir(dirname(path), { recursive: true })
-  const tempPath = \`\${path}.tmp\`
+  const tempPath = `${path}.tmp`
   await writeFile(tempPath, JSON.stringify(value, null, 2) + '\n')
   await rename(tempPath, path)
 }
@@ -263,11 +263,11 @@ function buildPrompt(candidate: FacilityCandidate) {
   return [
     'Research this U.S. DOT cylinder requalification facility for Cylinder Atlas.',
     '',
-    \`RIN: \${candidate.rin}\`,
-    \`PHMSA name: \${candidate.phmsa_name}\`,
-    \`PHMSA address: \${candidate.phmsa_address}\`,
-    \`City/state/postal: \${candidate.city}, \${candidate.state} \${candidate.postal_code ?? ''}\`.trim(),
-    \`Candidate hint: \${candidate.candidate_type_hint ?? 'none'}\`,
+    `RIN: ${candidate.rin}`,
+    `PHMSA name: ${candidate.phmsa_name}`,
+    `PHMSA address: ${candidate.phmsa_address}`,
+    `City/state/postal: ${candidate.city}, ${candidate.state} ${candidate.postal_code ?? ''}`.trim(),
+    `Candidate hint: ${candidate.candidate_type_hint ?? 'none'}`,
     '',
     'Governing rule:',
     'PHMSA authorization is already known. Your job is current-business evidence collection and fact extraction only. You do NOT decide publish/review/exclude.',
@@ -422,7 +422,7 @@ function sanitizeRecord(
       serviceKeys: [],
       serviceConfidence: 0,
       identityConfidence: 0,
-      summary: \`\${String(raw.summary ?? 'Evidence extraction completed.')} Source URL validation failed; downgraded to unresolved for safety.\`,
+      summary: `${String(raw.summary ?? 'Evidence extraction completed.')} Source URL validation failed; downgraded to unresolved for safety.`,
       evidenceUrl: safePrimaryUrl,
       evidenceType:
         safePrimaryUrl && isEvidenceType(raw.evidenceType) ? raw.evidenceType : null,
@@ -486,7 +486,7 @@ async function researchCandidate(candidate: FacilityCandidate) {
       const response = await fetch('https://api.openai.com/v1/responses', {
         method: 'POST',
         headers: {
-          Authorization: \`Bearer \${apiKey}\`,
+          Authorization: `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -517,7 +517,7 @@ async function researchCandidate(candidate: FacilityCandidate) {
       const body = (await response.json()) as OpenAIResponse
 
       if (!response.ok) {
-        const message = body.error?.message ?? \`OpenAI HTTP \${response.status}\`
+        const message = body.error?.message ?? `OpenAI HTTP ${response.status}`
         if ((response.status === 429 || response.status >= 500) && attempt < maxAttempts) {
           await sleep(500 * 2 ** (attempt - 1))
           continue
@@ -528,7 +528,7 @@ async function researchCandidate(candidate: FacilityCandidate) {
       addUsage(body)
 
       if (body.status && body.status !== 'completed') {
-        throw new Error(\`OpenAI response status was \${body.status}\`)
+        throw new Error(`OpenAI response status was ${body.status}`)
       }
 
       const text = extractOutputText(body)
