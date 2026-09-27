@@ -10,7 +10,8 @@
     "postinstall": "nuxt prepare",
     "enrich:canary": "tsx scripts/enrichment/run-canary.ts",
     "enrich:next": "tsx scripts/enrichment/export-next-batch.ts",
-    "enrich:apply": "tsx scripts/enrichment/apply-batch.ts"
+    "enrich:apply": "tsx scripts/enrichment/apply-batch.ts",
+    "enrich:harvest": "tsx scripts/enrichment/harvest-batch.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.0.0",
