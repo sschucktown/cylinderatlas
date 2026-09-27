@@ -45,6 +45,22 @@ export function decide(
   const internal = obviousInternalStatus(candidate)
   const businessStatus = internal ?? evidence.businessStatus
 
+  if (evidence.identityMatch === 'changed' || evidence.identityMatch === 'conflict') {
+    return {
+      rin: candidate.rin,
+      decision: 'review',
+      commercialStatus: 'unknown',
+      serviceKeys: [],
+      identityConfidence: evidence.identityConfidence,
+      serviceConfidence: evidence.serviceConfidence,
+      currentName: evidence.currentName,
+      currentAddress: evidence.currentAddress,
+      manualReviewReason: 'current identity/address does not cleanly reconcile to the PHMSA RIN facility',
+      evidenceUrls: evidence.evidenceUrls,
+      summary: evidence.summary,
+    }
+  }
+
   if (
     businessStatus === 'inactive' ||
     businessStatus === 'internal' ||
@@ -60,22 +76,6 @@ export function decide(
       serviceConfidence: evidence.serviceConfidence,
       currentName: evidence.currentName,
       currentAddress: evidence.currentAddress,
-      evidenceUrls: evidence.evidenceUrls,
-      summary: evidence.summary,
-    }
-  }
-
-  if (evidence.identityMatch === 'changed' || evidence.identityMatch === 'conflict') {
-    return {
-      rin: candidate.rin,
-      decision: 'review',
-      commercialStatus: 'unknown',
-      serviceKeys: [],
-      identityConfidence: evidence.identityConfidence,
-      serviceConfidence: evidence.serviceConfidence,
-      currentName: evidence.currentName,
-      currentAddress: evidence.currentAddress,
-      manualReviewReason: 'current identity/address does not cleanly reconcile to the PHMSA RIN facility',
       evidenceUrls: evidence.evidenceUrls,
       summary: evidence.summary,
     }
