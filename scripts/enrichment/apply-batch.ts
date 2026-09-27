@@ -117,7 +117,14 @@ const preview: PreviewRow[] = []
 function normalizeComparison(value: string | null | undefined) {
   return (value ?? '')
     .toUpperCase()
-    .replace(/\b(SUITE|STE)\b/g, '')
+    .replace(/\bSTREET\b/g, 'ST')
+    .replace(/\bROAD\b/g, 'RD')
+    .replace(/\bAVENUE\b/g, 'AVE')
+    .replace(/\bLANE\b/g, 'LN')
+    .replace(/\bDRIVE\b/g, 'DR')
+    .replace(/\bBOULEVARD\b/g, 'BLVD')
+    .replace(/\bHIGHWAY\b/g, 'HWY')
+    .replace(/\bSUITE\b/g, 'STE')
     .replace(/[^A-Z0-9]/g, '')
 }
 
@@ -154,9 +161,13 @@ function auditRisk(
 
   const currentAddress = normalizeComparison(result.currentAddress)
   const phmsaAddress = normalizeComparison(candidate.phmsa_address)
-  if (currentAddress && phmsaAddress && currentAddress !== phmsaAddress) {
+  if (
+    currentAddress &&
+    phmsaAddress &&
+    !currentAddress.includes(phmsaAddress)
+  ) {
     score += 6
-    reasons.push('current address differs from PHMSA address')
+    reasons.push('current address may differ from PHMSA address')
   }
 
   const identityText = [
