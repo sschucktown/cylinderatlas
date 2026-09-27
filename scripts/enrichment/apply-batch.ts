@@ -187,6 +187,7 @@ for (const record of payload.records) {
   // current business back to this exact RIN facility. This prevents service evidence
   // for a moved/renamed/conflicting business from being attached to the wrong facility.
   const verifiedServiceKeys =
+    result.decision === 'publish' &&
     record.identityMatch === 'matched' &&
     result.identityConfidence >= 0.85 &&
     identityCorroborated &&
