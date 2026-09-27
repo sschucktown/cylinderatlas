@@ -40,3 +40,33 @@ The deterministic canary selector intentionally over-samples difficult cases:
 - 1 paintball
 
 This is a stress test, not a population-proportional sample.
+
+## Bulk evidence harvester
+
+The first acceleration slice keeps the existing `queued_enrichment` facility cursor and does not add a new database work-queue table.
+
+Workflow for the initial fire/suppression batch:
+
+```bash
+npm run enrich:next -- --hint fire_suppression --limit 50 --output tmp/fire-50-candidates.json
+npm run enrich:harvest -- --input tmp/fire-50-candidates.json --output tmp/fire-50-evidence.json --concurrency 5
+npm run enrich:apply -- tmp/fire-50-evidence.json
+```
+
+The harvester:
+
+- uses bounded parallel research (default 5, hard cap 10)
+- retries transient research failures
+- checkpoints atomically after each candidate and resumes already harvested records when rerun with the same input/output
+- records usage counts so throughput and API cost can be measured
+- validates evidence URLs against sources actually consulted by web search
+- downgrades unverifiable source references to unresolved evidence rather than allowing a publish
+- treats weak or missing evidence as a valid path to downstream manual review
+
+`OPENAI_API_KEY` is server-only. `OPENAI_ENRICHMENT_MODEL` is optional and defaults to `gpt-5.6-terra`.
+
+The harvester only gathers and extracts evidence. It never writes public provider state and never chooses publish/review/exclude. `apply-batch.ts` remains the deterministic gate and still updates the public facility row last.
+
+An interrupted harvester writes `complete: false`; the applier refuses to consume that checkpoint. Records that fail harvesting are omitted from `records[]`, remain `queued_enrichment`, and can be retried on the next pass.
+
+Before increasing to 100-record batches, manually audit 10 newly published decisions from the first 50 and check identity/location continuity, customer access, service evidence, provenance, and false-publish count.
