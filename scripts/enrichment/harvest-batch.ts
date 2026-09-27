@@ -193,6 +193,33 @@ const usage: UsageTotals = {
   totalTokens: 0,
 }
 
+async function loadCheckpoint() {
+  try {
+    const existing = JSON.parse(await readFile(outputPath, 'utf8')) as HarvestPayload
+    const sameBatch =
+      existing.runName === input.runName &&
+      existing.batch === batch &&
+      existing.sourceBatch?.generatedAt === input.generatedAt
+
+    if (!sameBatch) return
+
+    for (const record of existing.records ?? []) {
+      if (input.candidates.some((candidate) => candidate.rin === record.rin)) {
+        recordByRin.set(record.rin, record)
+      }
+    }
+
+    usage.responseCalls = existing.usage?.responseCalls ?? 0
+    usage.webSearchCalls = existing.usage?.webSearchCalls ?? 0
+    usage.inputTokens = existing.usage?.inputTokens ?? 0
+    usage.outputTokens = existing.usage?.outputTokens ?? 0
+    usage.totalTokens = existing.usage?.totalTokens ?? 0
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code
+    if (code !== 'ENOENT') throw error
+  }
+}
+
 let checkpointChain = Promise.resolve()
 
 function createPayload(complete: boolean): HarvestPayload {
@@ -538,9 +565,15 @@ async function runWithConcurrency<T>(
   await Promise.all(workers)
 }
 
+await loadCheckpoint()
+
+const pendingCandidates = input.candidates.filter(
+  (candidate) => !recordByRin.has(candidate.rin),
+)
+
 await writeJsonAtomic(outputPath, createPayload(false))
 
-await runWithConcurrency(input.candidates, concurrency, async (candidate) => {
+await runWithConcurrency(pendingCandidates, concurrency, async (candidate) => {
   try {
     const record = await researchCandidate(candidate)
     recordByRin.set(candidate.rin, record)
@@ -575,6 +608,7 @@ console.log(
       model,
       output: outputPath,
       candidates: input.candidates.length,
+      resumed: input.candidates.length - pendingCandidates.length,
       harvested: recordByRin.size,
       failures: failureByRin.size,
       usage,
