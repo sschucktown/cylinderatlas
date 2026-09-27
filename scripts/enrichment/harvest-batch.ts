@@ -522,6 +522,7 @@ async function researchCandidate(candidate: FacilityCandidate) {
   let lastError: unknown
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    let successfulResponseReceived = false
     try {
       const response = await fetch('https://api.openai.com/v1/responses', {
         method: 'POST',
@@ -568,6 +569,7 @@ async function researchCandidate(candidate: FacilityCandidate) {
       }
 
       addUsage(body)
+      successfulResponseReceived = true
 
       if (body.status && body.status !== 'completed') {
         throw new Error(`OpenAI response status was ${body.status}`)
@@ -580,6 +582,7 @@ async function researchCandidate(candidate: FacilityCandidate) {
       return sanitizeRecord(candidate.rin, raw, consulted)
     } catch (error) {
       lastError = error
+      if (successfulResponseReceived) break
       if (attempt < maxAttempts) {
         await sleep(500 * 2 ** (attempt - 1))
       }
