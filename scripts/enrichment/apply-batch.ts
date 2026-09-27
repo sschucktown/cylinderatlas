@@ -9,8 +9,11 @@ interface BatchRecord extends Omit<EvidenceInput, 'identityCorroborated' | 'evid
   rin: string
   evidenceUrl?: string | null
   evidenceType?: EvidenceType | null
+  evidenceSupportsServiceKeys?: EvidenceInput['serviceKeys']
+  evidenceSupportsExternalCustomers?: boolean
   corroborationEvidenceUrl?: string | null
   corroborationEvidenceType?: EvidenceType | null
+  corroborationSupports?: Array<'identity' | 'address' | 'business_status'>
   corroborationSummary?: string
 }
 
@@ -21,10 +24,17 @@ const IDENTITY_CORROBORATION_TYPES = new Set<EvidenceType>([
   'provider_claim',
 ])
 
+const AUTO_PUBLISH_SERVICE_EVIDENCE_TYPES = new Set<EvidenceType>([
+  'first_party',
+  'regulatory',
+  'provider_claim',
+])
+
 interface BatchPayload {
   runName: string
   batch: string
   complete?: boolean
+  evidenceSemanticsVersion?: number
   records: BatchRecord[]
 }
 
@@ -107,6 +117,7 @@ for (const record of payload.records) {
   }
 
   const isHarvesterPayload = payload.complete === true
+  const usesEvidenceSemanticsV2 = payload.evidenceSemanticsVersion === 2
   const strongPrimaryEvidence = Boolean(
     record.evidenceUrl &&
       record.evidenceType &&
@@ -122,12 +133,41 @@ for (const record of payload.records) {
   // the corroboration source for current identity/location/business status. Require
   // the distinct corroboration source plus extracted current identity/location before
   // allowing the deterministic publish gate to clear.
+  const corroborationSupportsRequiredIdentityFields =
+    record.corroborationSupports?.includes('identity') === true &&
+    record.corroborationSupports?.includes('address') === true &&
+    record.corroborationSupports?.includes('business_status') === true
+
   const identityCorroborated = isHarvesterPayload
-    ? Boolean(strongCorroborationEvidence && record.currentName && record.currentAddress)
+    ? Boolean(
+        strongCorroborationEvidence &&
+          record.currentName &&
+          record.currentAddress &&
+          (!usesEvidenceSemanticsV2 || corroborationSupportsRequiredIdentityFields),
+      )
     : strongPrimaryEvidence || strongCorroborationEvidence
+
+  const evidenceBackedServiceKeys = usesEvidenceSemanticsV2
+    ? record.serviceKeys.filter((key) => record.evidenceSupportsServiceKeys?.includes(key))
+    : record.serviceKeys
+
+  const hasStrongAutoPublishServiceEvidence = Boolean(
+    record.evidenceUrl &&
+      record.evidenceType &&
+      (!usesEvidenceSemanticsV2 || AUTO_PUBLISH_SERVICE_EVIDENCE_TYPES.has(record.evidenceType)),
+  )
+
+  const effectiveExternalCustomerStatus =
+    usesEvidenceSemanticsV2 &&
+    record.servesExternalCustomers === 'yes' &&
+    record.evidenceSupportsExternalCustomers !== true
+      ? 'unknown'
+      : record.servesExternalCustomers
 
   const result = decide(candidate, {
     ...record,
+    servesExternalCustomers: effectiveExternalCustomerStatus,
+    serviceKeys: hasStrongAutoPublishServiceEvidence ? evidenceBackedServiceKeys : [],
     identityCorroborated,
     evidenceUrls: [record.evidenceUrl, record.corroborationEvidenceUrl].filter(
       (url): url is string => Boolean(url),
@@ -159,7 +199,7 @@ for (const record of payload.records) {
         facility_id: facility.id,
         identity_match: record.identityMatch,
         business_status: record.businessStatus,
-        serves_external_customers: record.servesExternalCustomers,
+        serves_external_customers: effectiveExternalCustomerStatus,
         identity_confidence: result.identityConfidence,
         service_confidence: result.serviceConfidence,
         decision: result.decision,
@@ -173,6 +213,10 @@ for (const record of payload.records) {
           evidence_url: record.evidenceUrl ?? null,
           evidence_type: record.evidenceType ?? null,
           identity_corroborated: identityCorroborated,
+          evidence_semantics_version: payload.evidenceSemanticsVersion ?? null,
+          evidence_supports_service_keys: record.evidenceSupportsServiceKeys ?? null,
+          evidence_supports_external_customers: record.evidenceSupportsExternalCustomers ?? null,
+          corroboration_supports: record.corroborationSupports ?? null,
           corroboration_evidence_url: record.corroborationEvidenceUrl ?? null,
           corroboration_evidence_type: record.corroborationEvidenceType ?? null,
         },
@@ -194,7 +238,7 @@ for (const record of payload.records) {
     result.serviceConfidence >= 0.85 &&
     record.evidenceUrl &&
     record.evidenceType
-      ? record.serviceKeys
+      ? result.serviceKeys
       : []
 
   for (const serviceKey of verifiedServiceKeys) {

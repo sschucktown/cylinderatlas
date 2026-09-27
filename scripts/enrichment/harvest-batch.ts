@@ -17,6 +17,7 @@ type EvidenceType =
   | 'other'
 
 type ExternalCustomerStatus = 'yes' | 'no' | 'unknown'
+type CorroborationSupport = 'identity' | 'address' | 'business_status'
 
 interface ExportPayload {
   runName: string
@@ -35,6 +36,8 @@ interface HarvestedRecord {
   currentName: string | null
   currentAddress: string | null
   serviceKeys: ServiceKey[]
+  evidenceSupportsServiceKeys: ServiceKey[]
+  evidenceSupportsExternalCustomers: boolean
   serviceConfidence: number
   identityConfidence: number
   summary: string
@@ -42,6 +45,7 @@ interface HarvestedRecord {
   evidenceType: EvidenceType | null
   corroborationEvidenceUrl: string | null
   corroborationEvidenceType: EvidenceType | null
+  corroborationSupports: CorroborationSupport[]
   corroborationSummary: string | null
 }
 
@@ -64,6 +68,7 @@ interface HarvestPayload {
   model: string
   generatedAt: string
   complete: boolean
+  evidenceSemanticsVersion: 2
   estimatedCostUsd: number
   sourceBatch: {
     hint: string | null
@@ -126,6 +131,11 @@ const evidenceSchema = {
       type: 'array',
       items: { type: 'string', enum: SERVICE_KEYS },
     },
+    evidenceSupportsServiceKeys: {
+      type: 'array',
+      items: { type: 'string', enum: SERVICE_KEYS },
+    },
+    evidenceSupportsExternalCustomers: { type: 'boolean' },
     serviceConfidence: { type: 'number', minimum: 0, maximum: 1 },
     identityConfidence: { type: 'number', minimum: 0, maximum: 1 },
     summary: { type: 'string' },
@@ -136,6 +146,10 @@ const evidenceSchema = {
       type: ['string', 'null'],
       enum: [...EVIDENCE_TYPES, null],
     },
+    corroborationSupports: {
+      type: 'array',
+      items: { type: 'string', enum: ['identity', 'address', 'business_status'] },
+    },
     corroborationSummary: { type: ['string', 'null'] },
   },
   required: [
@@ -145,6 +159,8 @@ const evidenceSchema = {
     'currentName',
     'currentAddress',
     'serviceKeys',
+    'evidenceSupportsServiceKeys',
+    'evidenceSupportsExternalCustomers',
     'serviceConfidence',
     'identityConfidence',
     'summary',
@@ -152,6 +168,7 @@ const evidenceSchema = {
     'evidenceType',
     'corroborationEvidenceUrl',
     'corroborationEvidenceType',
+    'corroborationSupports',
     'corroborationSummary',
   ],
   additionalProperties: false,
@@ -280,6 +297,7 @@ function createPayload(complete: boolean): HarvestPayload {
     model,
     generatedAt: new Date().toISOString(),
     complete,
+    evidenceSemanticsVersion: 2,
     estimatedCostUsd: roundUsd(estimateCostUsd(usage)),
     sourceBatch: {
       hint: input.hint ?? null,
@@ -324,10 +342,12 @@ function buildPrompt(candidate: FacilityCandidate) {
     '- identityMatch=matched only when current evidence cleanly reconciles the current business to the exact PHMSA facility/location.',
     '- If a current business address materially differs, a suite differs without reconciliation, or an acquisition/rename lineage is unclear, use changed or conflict rather than matched.',
     '- servesExternalCustomers=yes only when current evidence shows the facility serves outside customers. Do not infer it merely from being an active company.',
-    '- serviceKeys must be backed by current service evidence. Do not infer a service category from the company name, the candidate hint, or PHMSA cylinder specifications.',
+    '- serviceKeys are candidate services you believe are current. evidenceSupportsServiceKeys must include ONLY the subset explicitly supported by evidenceUrl itself. Do not infer a service category from company name, candidate hint, PHMSA cylinder specifications, or a generic statement such as hydrostatic testing.',
+    '- evidenceSupportsExternalCustomers=true only when evidenceUrl itself shows service to outside customers.',
     '- For fire/suppression, evidence should show customer-facing fire extinguisher/suppression/cylinder service; hydrostatic or cylinder testing/requalification language is especially strong.',
-    '- Use evidenceUrl for the best source supporting service/customer access when possible.',
+    '- Use evidenceUrl for the best source supporting service/customer access when possible. Social media, user-review sites, and generic directories are not strong enough for automatic publication.',
     '- Use corroborationEvidenceUrl for a distinct strong source supporting current identity/location/business status when available.',
+    '- corroborationSupports must list ONLY what corroborationEvidenceUrl itself establishes: identity, address, and/or business_status. A government URL is not automatically identity evidence just because it is regulatory.',
     '- URLs must be exact URLs you actually consulted in web search. Do not invent or rewrite URLs.',
     '- If evidence is weak or missing, return unknown values and conservative confidence. A review outcome is acceptable downstream.',
     '- Do not use social media, user-review sites, or SEO lead directories as strong identity corroboration.',
@@ -454,6 +474,16 @@ function sanitizeRecord(
   const serviceKeys = Array.isArray(raw.serviceKeys)
     ? raw.serviceKeys.filter(isServiceKey)
     : []
+  const evidenceSupportsServiceKeys = Array.isArray(raw.evidenceSupportsServiceKeys)
+    ? raw.evidenceSupportsServiceKeys.filter(isServiceKey)
+    : []
+  const evidenceSupportsExternalCustomers = raw.evidenceSupportsExternalCustomers === true
+  const corroborationSupports = Array.isArray(raw.corroborationSupports)
+    ? raw.corroborationSupports.filter(
+        (value): value is CorroborationSupport =>
+          value === 'identity' || value === 'address' || value === 'business_status',
+      )
+    : []
   const identityConfidence = clampConfidence(raw.identityConfidence)
   const serviceConfidence = clampConfidence(raw.serviceConfidence)
 
@@ -466,6 +496,8 @@ function sanitizeRecord(
       currentName: typeof raw.currentName === 'string' ? raw.currentName : null,
       currentAddress: typeof raw.currentAddress === 'string' ? raw.currentAddress : null,
       serviceKeys: [],
+      evidenceSupportsServiceKeys: [],
+      evidenceSupportsExternalCustomers: false,
       serviceConfidence: 0,
       identityConfidence: 0,
       summary: `${String(raw.summary ?? 'Evidence extraction completed.')} Source URL validation failed; downgraded to unresolved for safety.`,
@@ -477,6 +509,7 @@ function sanitizeRecord(
         safeCorroborationUrl && isEvidenceType(raw.corroborationEvidenceType)
           ? raw.corroborationEvidenceType
           : null,
+      corroborationSupports: [],
       corroborationSummary:
         safeCorroborationUrl && typeof raw.corroborationSummary === 'string'
           ? raw.corroborationSummary
@@ -492,6 +525,10 @@ function sanitizeRecord(
     currentName: typeof raw.currentName === 'string' ? raw.currentName : null,
     currentAddress: typeof raw.currentAddress === 'string' ? raw.currentAddress : null,
     serviceKeys,
+    evidenceSupportsServiceKeys: evidenceSupportsServiceKeys.filter((key) =>
+      serviceKeys.includes(key),
+    ),
+    evidenceSupportsExternalCustomers,
     serviceConfidence,
     identityConfidence,
     summary: String(raw.summary ?? ''),
@@ -503,6 +540,7 @@ function sanitizeRecord(
       safeCorroborationUrl && isEvidenceType(raw.corroborationEvidenceType)
         ? raw.corroborationEvidenceType
         : null,
+    corroborationSupports: safeCorroborationUrl ? corroborationSupports : [],
     corroborationSummary:
       safeCorroborationUrl && typeof raw.corroborationSummary === 'string'
         ? raw.corroborationSummary

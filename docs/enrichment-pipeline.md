@@ -66,6 +66,8 @@ The harvester:
 - checkpoints atomically after each candidate and resumes already harvested records when rerun with the same input/output
 - records usage counts so throughput and API cost can be measured
 - validates evidence URLs against sources actually consulted by web search
+- records explicit source-support semantics: which service keys the primary source itself supports, whether it proves outside-customer access, and whether corroboration proves identity/address/business status
+- future evidence-semantics-v2 batches auto-publish services only from first-party, regulatory, or provider-confirmed primary evidence; directory/social evidence can still inform review but cannot clear publication by itself
 - downgrades unverifiable source references to unresolved evidence rather than allowing a publish
 - treats weak or missing evidence as a valid path to downstream manual review
 
