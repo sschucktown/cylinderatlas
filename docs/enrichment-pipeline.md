@@ -48,27 +48,30 @@ The first acceleration slice keeps the existing `queued_enrichment` facility cur
 Workflow for the initial fire/suppression batch:
 
 ```bash
-npm run enrich:next -- --hint fire_suppression --limit 50 --output tmp/fire-50-candidates.json
-npm run enrich:harvest -- --input tmp/fire-50-candidates.json --output tmp/fire-50-evidence.json --concurrency 5
-npm run enrich:apply -- tmp/fire-50-evidence.json --dry-run
-# Audit the preview before the production write:
-npm run enrich:apply -- tmp/fire-50-evidence.json
+npm run enrich:next -- --hint fire_suppression --limit 10 --output tmp/fire-cost-canary-10-candidates.json
+npm run enrich:harvest -- --input tmp/fire-cost-canary-10-candidates.json --output tmp/fire-cost-canary-10-evidence.json --concurrency 5
+npm run enrich:apply -- tmp/fire-cost-canary-10-evidence.json --dry-run
+# Audit cost, evidence quality, and the preview before any production write.
 ```
 
 The harvester:
 
+- defaults to `gpt-6-luna`, reasoning `none`, and low web-search context
+- enforces at most one built-in web-search tool call per facility
+- caps model output at 800 tokens per facility
 - uses bounded parallel research (default 5, hard cap 10)
-- retries transient research failures
+- retries only pre-response transient failures; it never repeats a paid search after a successful API response
+- samples the first 10 records and stops automatically if the projected batch cost exceeds $2
 - checkpoints atomically after each candidate and resumes already harvested records when rerun with the same input/output
 - records usage counts so throughput and API cost can be measured
 - validates evidence URLs against sources actually consulted by web search
 - downgrades unverifiable source references to unresolved evidence rather than allowing a publish
 - treats weak or missing evidence as a valid path to downstream manual review
 
-`OPENAI_API_KEY` is server-only. `OPENAI_ENRICHMENT_MODEL` is optional and defaults to `gpt-5.6-terra`.
+`OPENAI_API_KEY` is server-only. `OPENAI_ENRICHMENT_MODEL` is optional and defaults to `gpt-6-luna`. The cost breaker can be tuned with `--cost-sample` and `--max-projected-cost`; keep the defaults until the cheaper path has passed its 10-record canary.
 
 The harvester only gathers and extracts evidence. It never writes public provider state and never chooses publish/review/exclude. `apply-batch.ts` remains the deterministic gate and still updates the public facility row last.
 
 An interrupted harvester writes `complete: false`; the applier refuses to consume that checkpoint. Records that fail harvesting are omitted from `records[]`, remain `queued_enrichment`, and can be retried on the next pass.
 
-Before increasing to 100-record batches, manually audit 10 newly published decisions from the first 50 and check identity/location continuity, customer access, service evidence, provenance, and false-publish count.
+Before resuming larger batches, run a fresh 10-record cost canary and inspect actual API usage, estimated cost, identity/location continuity, customer access, service evidence, provenance, and false-publish count. Do not scale if quality regresses or projected cost exceeds the configured breaker.
