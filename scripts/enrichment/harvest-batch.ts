@@ -122,7 +122,6 @@ const evidenceSchema = {
     serviceKeys: {
       type: 'array',
       items: { type: 'string', enum: SERVICE_KEYS },
-      uniqueItems: true,
     },
     serviceConfidence: { type: 'number', minimum: 0, maximum: 1 },
     identityConfidence: { type: 'number', minimum: 0, maximum: 1 },
@@ -493,7 +492,7 @@ async function researchCandidate(candidate: FacilityCandidate) {
           model,
           reasoning: { effort: 'low' },
           tools: [{ type: 'web_search', search_context_size: 'medium' }],
-          tool_choice: 'auto',
+          tool_choice: 'required',
           include: ['web_search_call.action.sources'],
           text: {
             format: {
