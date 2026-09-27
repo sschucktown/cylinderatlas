@@ -91,7 +91,8 @@ if (missingRins.length) {
 }
 
 const applied: Array<{ rin: string; decision: string }> = []
-const preview: Array<{
+
+interface PreviewRow {
   rin: string
   decision: string
   identityCorroborated: boolean
@@ -99,9 +100,80 @@ const preview: Array<{
   serviceConfidence: number
   serviceKeys: string[]
   evidenceUrl: string | null
+  evidenceType: EvidenceType | null
   corroborationEvidenceUrl: string | null
+  corroborationEvidenceType: EvidenceType | null
+  phmsaName: string
+  phmsaAddress: string
+  currentName: string | null
+  currentAddress: string | null
+  auditRisk: number
+  auditReasons: string[]
   manualReviewReason: string | null
-}> = []
+}
+
+const preview: PreviewRow[] = []
+
+function normalizeComparison(value: string | null | undefined) {
+  return (value ?? '')
+    .toUpperCase()
+    .replace(/\b(SUITE|STE)\b/g, '')
+    .replace(/[^A-Z0-9]/g, '')
+}
+
+function auditRisk(
+  candidate: FacilityCandidate,
+  record: BatchRecord,
+  result: ReturnType<typeof decide>,
+) {
+  let score = 0
+  const reasons: string[] = []
+
+  if (result.identityConfidence < 0.9) {
+    score += Math.round((0.9 - result.identityConfidence) * 100)
+    reasons.push(`identity confidence ${result.identityConfidence.toFixed(2)}`)
+  }
+
+  if (result.serviceConfidence < 0.9) {
+    score += Math.round((0.9 - result.serviceConfidence) * 100)
+    reasons.push(`service confidence ${result.serviceConfidence.toFixed(2)}`)
+  }
+
+  if (result.serviceKeys.length > 1) {
+    score += 5 + (result.serviceKeys.length - 1) * 2
+    reasons.push(`multi-service publish (${result.serviceKeys.length})`)
+  }
+
+  if (
+    record.evidenceType &&
+    !AUTO_PUBLISH_SERVICE_EVIDENCE_TYPES.has(record.evidenceType)
+  ) {
+    score += 10
+    reasons.push(`weak primary evidence type: ${record.evidenceType}`)
+  }
+
+  const currentAddress = normalizeComparison(result.currentAddress)
+  const phmsaAddress = normalizeComparison(candidate.phmsa_address)
+  if (currentAddress && phmsaAddress && currentAddress !== phmsaAddress) {
+    score += 6
+    reasons.push('current address differs from PHMSA address')
+  }
+
+  const identityText = [
+    result.summary,
+    record.corroborationSummary,
+    result.currentName,
+  ]
+    .filter(Boolean)
+    .join(' ')
+
+  if (/\b(acquir|formerly|merger|merged|rename|renamed|d\/?b\/?a|doing business as|moved|relocat)/i.test(identityText)) {
+    score += 8
+    reasons.push('acquisition/rename/move signal')
+  }
+
+  return { score, reasons }
+}
 
 for (const record of payload.records) {
   const facility = facilitiesByRin.get(record.rin)!
@@ -185,7 +257,17 @@ for (const record of payload.records) {
       serviceConfidence: result.serviceConfidence,
       serviceKeys: result.serviceKeys,
       evidenceUrl: record.evidenceUrl ?? null,
+      evidenceType: record.evidenceType ?? null,
       corroborationEvidenceUrl: record.corroborationEvidenceUrl ?? null,
+      corroborationEvidenceType: record.corroborationEvidenceType ?? null,
+      phmsaName: candidate.phmsa_name,
+      phmsaAddress: candidate.phmsa_address,
+      currentName: result.currentName ?? null,
+      currentAddress: result.currentAddress ?? null,
+      ...(() => {
+        const risk = auditRisk(candidate, record, result)
+        return { auditRisk: risk.score, auditReasons: risk.reasons }
+      })(),
       manualReviewReason: result.manualReviewReason ?? null,
     })
     continue
@@ -343,6 +425,17 @@ const counts = applied.reduce<Record<string, number>>((acc, row) => {
   return acc
 }, {})
 
+const publishAuditSample = preview
+  .filter((row) => row.decision === 'publish')
+  .sort(
+    (a, b) =>
+      b.auditRisk - a.auditRisk ||
+      Math.min(a.identityConfidence, a.serviceConfidence) -
+        Math.min(b.identityConfidence, b.serviceConfidence) ||
+      a.rin.localeCompare(b.rin),
+  )
+  .slice(0, 5)
+
 console.log(
   JSON.stringify(
     {
@@ -354,9 +447,10 @@ console.log(
       decisions: counts,
       ...(dryRun
         ? {
+            auditPublishCandidates: publishAuditSample,
+            excludeCandidates: preview.filter((row) => row.decision === 'exclude'),
             publishCandidates: preview.filter((row) => row.decision === 'publish'),
             reviewCandidates: preview.filter((row) => row.decision === 'review'),
-            excludeCandidates: preview.filter((row) => row.decision === 'exclude'),
           }
         : {}),
     },

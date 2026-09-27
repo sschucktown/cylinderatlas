@@ -77,4 +77,6 @@ The harvester only gathers and extracts evidence. It never writes public provide
 
 An interrupted or partially failed harvester writes `complete: false`; the applier refuses to consume that checkpoint. Records that fail harvesting are omitted from `records[]`, remain `queued_enrichment`, and can be retried by rerunning the same input/output. Successful records are resumed rather than researched again.
 
+For validated v2 batches, dry-run output includes `auditPublishCandidates`: the five highest-risk proposed publishes ranked by low confidence, multi-service breadth, address differences, and acquisition/rename/move signals. Audit those five plus every proposed exclusion before applying. Full publish/review candidate lists remain in the preview for deeper investigation when needed.
+
 Before resuming larger batches, run a fresh 10-record cost canary and inspect actual API usage, estimated cost, identity/location continuity, customer access, service evidence, provenance, and false-publish count. Do not scale if quality regresses or projected cost exceeds the configured breaker.
