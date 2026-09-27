@@ -59,7 +59,8 @@ The harvester:
 - defaults to `gpt-6-luna`, reasoning `none`, and low web-search context
 - enforces at most one built-in web-search tool call per facility
 - caps model output at 800 tokens per facility
-- uses bounded parallel research (default 5, hard cap 10)
+- uses bounded parallel research (default 5, hard cap 10), but paces GPT-6 Luna request starts to stay under token-per-minute limits
+- respects OpenAI Retry-After/token-reset headers with shared backoff across workers
 - retries only pre-response transient failures; it never repeats a paid search after a successful API response
 - samples the first 10 records and stops automatically if the projected batch cost exceeds $2
 - checkpoints atomically after each candidate and resumes already harvested records when rerun with the same input/output
@@ -72,6 +73,6 @@ The harvester:
 
 The harvester only gathers and extracts evidence. It never writes public provider state and never chooses publish/review/exclude. `apply-batch.ts` remains the deterministic gate and still updates the public facility row last.
 
-An interrupted harvester writes `complete: false`; the applier refuses to consume that checkpoint. Records that fail harvesting are omitted from `records[]`, remain `queued_enrichment`, and can be retried on the next pass.
+An interrupted or partially failed harvester writes `complete: false`; the applier refuses to consume that checkpoint. Records that fail harvesting are omitted from `records[]`, remain `queued_enrichment`, and can be retried by rerunning the same input/output. Successful records are resumed rather than researched again.
 
 Before resuming larger batches, run a fresh 10-record cost canary and inspect actual API usage, estimated cost, identity/location continuity, customer access, service evidence, provenance, and false-publish count. Do not scale if quality regresses or projected cost exceeds the configured breaker.

@@ -85,6 +85,8 @@ interface OpenAIResponse {
   }
   error?: {
     message?: string
+    code?: string
+    type?: string
   }
 }
 
@@ -167,6 +169,10 @@ const concurrency = Math.min(readPositiveIntFlag('concurrency', 5), 10)
 const maxAttempts = Math.min(readPositiveIntFlag('attempts', 3), 5)
 const costSampleSize = Math.min(readPositiveIntFlag('cost-sample', 10), 50)
 const model = process.env.OPENAI_ENRICHMENT_MODEL ?? 'gpt-6-luna'
+const minRequestIntervalMs = Math.min(
+  readPositiveIntFlag('min-request-interval-ms', model === 'gpt-6-luna' ? 4500 : 1000),
+  60_000,
+)
 const apiKey = process.env.OPENAI_API_KEY
 
 function readPositiveFloatFlag(name: string, fallback: number) {
@@ -518,12 +524,57 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
+function parseResetDurationMs(raw: string | null) {
+  if (!raw) return null
+  const trimmed = raw.trim().toLowerCase()
+  const milliseconds = trimmed.match(/^(\d+(?:\.\d+)?)ms$/)
+  if (milliseconds) return Math.ceil(Number(milliseconds[1]) + 250)
+  const seconds = trimmed.match(/^(\d+(?:\.\d+)?)s$/)
+  if (seconds) return Math.ceil(Number(seconds[1]) * 1000 + 250)
+  return null
+}
+
+function retryDelayMs(response: Response, attempt: number) {
+  const retryAfter = response.headers.get('retry-after')
+  if (retryAfter) {
+    const seconds = Number(retryAfter)
+    if (Number.isFinite(seconds)) return Math.ceil(seconds * 1000 + 250)
+
+    const retryDate = Date.parse(retryAfter)
+    if (Number.isFinite(retryDate)) {
+      return Math.max(retryDate - Date.now() + 250, 250)
+    }
+  }
+
+  const tokenReset = parseResetDurationMs(response.headers.get('x-ratelimit-reset-tokens'))
+  if (tokenReset !== null) return tokenReset
+
+  return 1000 * 2 ** (attempt - 1) + 250
+}
+
+let requestGate = Promise.resolve()
+let nextRequestAt = 0
+let sharedBackoffUntil = 0
+
+async function waitForRequestSlot() {
+  requestGate = requestGate.then(async () => {
+    const waitUntil = Math.max(nextRequestAt, sharedBackoffUntil)
+    const delay = waitUntil - Date.now()
+    if (delay > 0) await sleep(delay)
+    nextRequestAt = Date.now() + minRequestIntervalMs
+  })
+
+  await requestGate
+}
+
 async function researchCandidate(candidate: FacilityCandidate) {
   let lastError: unknown
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     let successfulResponseReceived = false
     try {
+      await waitForRequestSlot()
+
       const response = await fetch('https://api.openai.com/v1/responses', {
         method: 'POST',
         headers: {
@@ -562,7 +613,8 @@ async function researchCandidate(candidate: FacilityCandidate) {
       if (!response.ok) {
         const message = body.error?.message ?? `OpenAI HTTP ${response.status}`
         if ((response.status === 429 || response.status >= 500) && attempt < maxAttempts) {
-          await sleep(500 * 2 ** (attempt - 1))
+          const delay = retryDelayMs(response, attempt)
+          sharedBackoffUntil = Math.max(sharedBackoffUntil, Date.now() + delay)
           continue
         }
         throw new Error(message)
@@ -694,7 +746,9 @@ if (
 
 await harvestCandidates(remainingCandidates)
 await checkpointChain
-await writeJsonAtomic(outputPath, createPayload(true))
+const complete =
+  recordByRin.size === input.candidates.length && failureByRin.size === 0
+await writeJsonAtomic(outputPath, createPayload(complete))
 
 console.log(
   JSON.stringify(
@@ -707,6 +761,7 @@ console.log(
       resumed: resumedCount,
       harvested: recordByRin.size,
       failures: failureByRin.size,
+      complete,
       estimatedCostUsd: roundUsd(estimateCostUsd(usage)),
       sample: {
         size: sampleCandidates.length,
