@@ -240,12 +240,12 @@ for (const record of payload.records) {
       (!usesEvidenceSemanticsV2 || AUTO_PUBLISH_SERVICE_EVIDENCE_TYPES.has(record.evidenceType)),
   )
 
-  const effectiveExternalCustomerStatus =
-    usesEvidenceSemanticsV2 &&
-    record.servesExternalCustomers === 'yes' &&
-    record.evidenceSupportsExternalCustomers !== true
-      ? 'unknown'
-      : record.servesExternalCustomers
+  const effectiveExternalCustomerStatus = usesEvidenceSemanticsV2
+    ? record.servesExternalCustomers === 'yes' &&
+      record.evidenceSupportsExternalCustomers === true
+      ? 'yes'
+      : 'unknown'
+    : record.servesExternalCustomers
 
   const result = decide(candidate, {
     ...record,
