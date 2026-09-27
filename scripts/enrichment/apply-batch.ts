@@ -7,10 +7,10 @@ type EvidenceType = 'regulatory' | 'first_party' | 'business_registry' | 'direct
 
 interface BatchRecord extends Omit<EvidenceInput, 'identityCorroborated' | 'evidenceUrls'> {
   rin: string
-  evidenceUrl: string
-  evidenceType: EvidenceType
-  corroborationEvidenceUrl?: string
-  corroborationEvidenceType?: EvidenceType
+  evidenceUrl?: string | null
+  evidenceType?: EvidenceType | null
+  corroborationEvidenceUrl?: string | null
+  corroborationEvidenceType?: EvidenceType | null
   corroborationSummary?: string
 }
 
@@ -24,17 +24,24 @@ const IDENTITY_CORROBORATION_TYPES = new Set<EvidenceType>([
 interface BatchPayload {
   runName: string
   batch: string
+  complete?: boolean
   records: BatchRecord[]
 }
 
-const inputPath = process.argv[2]
+const args = process.argv.slice(2)
+const dryRun = args.includes('--dry-run')
+const inputPath = args.find((arg) => !arg.startsWith('--'))
 if (!inputPath) {
-  throw new Error('Usage: npm run enrich:apply -- <evidence-batch.json>')
+  throw new Error('Usage: npm run enrich:apply -- <evidence-batch.json> [--dry-run]')
 }
 
 const payload = JSON.parse(await readFile(inputPath, 'utf8')) as BatchPayload
 if (!payload.runName || !payload.batch || !Array.isArray(payload.records) || !payload.records.length) {
   throw new Error('Batch file must include runName, batch, and non-empty records[]')
+}
+
+if (payload.complete === false) {
+  throw new Error('Refusing to apply an incomplete harvester checkpoint')
 }
 
 const duplicateRins = payload.records
@@ -74,6 +81,17 @@ if (missingRins.length) {
 }
 
 const applied: Array<{ rin: string; decision: string }> = []
+const preview: Array<{
+  rin: string
+  decision: string
+  identityCorroborated: boolean
+  identityConfidence: number
+  serviceConfidence: number
+  serviceKeys: string[]
+  evidenceUrl: string | null
+  corroborationEvidenceUrl: string | null
+  manualReviewReason: string | null
+}> = []
 
 for (const record of payload.records) {
   const facility = facilitiesByRin.get(record.rin)!
@@ -88,21 +106,50 @@ for (const record of payload.records) {
     candidate_type_hint: facility.candidate_type_hint,
   }
 
-  const identityCorroborated =
-    IDENTITY_CORROBORATION_TYPES.has(record.evidenceType) ||
-    Boolean(
+  const isHarvesterPayload = payload.complete === true
+  const strongPrimaryEvidence = Boolean(
+    record.evidenceUrl &&
+      record.evidenceType &&
+      IDENTITY_CORROBORATION_TYPES.has(record.evidenceType),
+  )
+  const strongCorroborationEvidence = Boolean(
+    record.corroborationEvidenceUrl &&
       record.corroborationEvidenceType &&
-        IDENTITY_CORROBORATION_TYPES.has(record.corroborationEvidenceType),
-    )
+      IDENTITY_CORROBORATION_TYPES.has(record.corroborationEvidenceType),
+  )
+
+  // Harvester packets reserve the primary source for service/customer evidence and
+  // the corroboration source for current identity/location/business status. Require
+  // the distinct corroboration source plus extracted current identity/location before
+  // allowing the deterministic publish gate to clear.
+  const identityCorroborated = isHarvesterPayload
+    ? Boolean(strongCorroborationEvidence && record.currentName && record.currentAddress)
+    : strongPrimaryEvidence || strongCorroborationEvidence
 
   const result = decide(candidate, {
     ...record,
     identityCorroborated,
-    evidenceUrls: [
-      record.evidenceUrl,
-      ...(record.corroborationEvidenceUrl ? [record.corroborationEvidenceUrl] : []),
-    ],
+    evidenceUrls: [record.evidenceUrl, record.corroborationEvidenceUrl].filter(
+      (url): url is string => Boolean(url),
+    ),
   })
+
+  applied.push({ rin: facility.rin, decision: result.decision })
+
+  if (dryRun) {
+    preview.push({
+      rin: facility.rin,
+      decision: result.decision,
+      identityCorroborated,
+      identityConfidence: result.identityConfidence,
+      serviceConfidence: result.serviceConfidence,
+      serviceKeys: result.serviceKeys,
+      evidenceUrl: record.evidenceUrl ?? null,
+      corroborationEvidenceUrl: record.corroborationEvidenceUrl ?? null,
+      manualReviewReason: result.manualReviewReason ?? null,
+    })
+    continue
+  }
 
   const { error: resultError } = await supabase
     .from('facility_enrichment_results')
@@ -123,8 +170,8 @@ for (const record of payload.records) {
         evidence_summary: result.summary,
         raw_result: {
           batch: payload.batch,
-          evidence_url: record.evidenceUrl,
-          evidence_type: record.evidenceType,
+          evidence_url: record.evidenceUrl ?? null,
+          evidence_type: record.evidenceType ?? null,
           identity_corroborated: identityCorroborated,
           corroboration_evidence_url: record.corroborationEvidenceUrl ?? null,
           corroboration_evidence_type: record.corroborationEvidenceType ?? null,
@@ -136,9 +183,21 @@ for (const record of payload.records) {
 
   if (resultError) throw resultError
 
-  // Only evidence-supplied service keys become verified rows. Heuristic suggestions
-  // may help manual review, but they must never become verified service evidence.
-  for (const serviceKey of record.serviceKeys) {
+  // A service can be verified only after the evidence packet cleanly maps the
+  // current business back to this exact RIN facility. This prevents service evidence
+  // for a moved/renamed/conflicting business from being attached to the wrong facility.
+  const verifiedServiceKeys =
+    result.decision === 'publish' &&
+    record.identityMatch === 'matched' &&
+    result.identityConfidence >= 0.85 &&
+    identityCorroborated &&
+    result.serviceConfidence >= 0.85 &&
+    record.evidenceUrl &&
+    record.evidenceType
+      ? record.serviceKeys
+      : []
+
+  for (const serviceKey of verifiedServiceKeys) {
     const { error: serviceError } = await supabase
       .from('facility_services')
       .upsert(
@@ -154,26 +213,28 @@ for (const record of payload.records) {
     if (serviceError) throw serviceError
   }
 
-  const { data: existingEvidence, error: evidenceLookupError } = await supabase
-    .from('evidence')
-    .select('id')
-    .eq('facility_id', facility.id)
-    .eq('supports_field', 'national-enrichment-v1')
-    .eq('url', record.evidenceUrl)
-    .limit(1)
+  if (record.evidenceUrl && record.evidenceType) {
+    const { data: existingEvidence, error: evidenceLookupError } = await supabase
+      .from('evidence')
+      .select('id')
+      .eq('facility_id', facility.id)
+      .eq('supports_field', 'national-enrichment-v1')
+      .eq('url', record.evidenceUrl)
+      .limit(1)
 
-  if (evidenceLookupError) throw evidenceLookupError
+    if (evidenceLookupError) throw evidenceLookupError
 
-  if (!existingEvidence?.length) {
-    const { error: evidenceError } = await supabase.from('evidence').insert({
-      facility_id: facility.id,
-      evidence_type: record.evidenceType,
-      url: record.evidenceUrl,
-      supports_field: 'national-enrichment-v1',
-      summary: result.summary,
-    })
+    if (!existingEvidence?.length) {
+      const { error: evidenceError } = await supabase.from('evidence').insert({
+        facility_id: facility.id,
+        evidence_type: record.evidenceType,
+        url: record.evidenceUrl,
+        supports_field: 'national-enrichment-v1',
+        summary: result.summary,
+      })
 
-    if (evidenceError) throw evidenceError
+      if (evidenceError) throw evidenceError
+    }
   }
 
   if (record.corroborationEvidenceUrl && record.corroborationEvidenceType) {
@@ -231,7 +292,6 @@ for (const record of payload.records) {
 
   if (facilityError) throw facilityError
 
-  applied.push({ rin: facility.rin, decision: result.decision })
 }
 
 const counts = applied.reduce<Record<string, number>>((acc, row) => {
@@ -244,8 +304,17 @@ console.log(
     {
       run: run.name,
       batch: payload.batch,
-      applied: applied.length,
+      dryRun,
+      applied: dryRun ? 0 : applied.length,
+      evaluated: applied.length,
       decisions: counts,
+      ...(dryRun
+        ? {
+            publishCandidates: preview.filter((row) => row.decision === 'publish'),
+            reviewCandidates: preview.filter((row) => row.decision === 'review'),
+            excludeCandidates: preview.filter((row) => row.decision === 'exclude'),
+          }
+        : {}),
     },
     null,
     2,
