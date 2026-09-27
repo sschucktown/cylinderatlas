@@ -50,6 +50,8 @@ Workflow for the initial fire/suppression batch:
 ```bash
 npm run enrich:next -- --hint fire_suppression --limit 50 --output tmp/fire-50-candidates.json
 npm run enrich:harvest -- --input tmp/fire-50-candidates.json --output tmp/fire-50-evidence.json --concurrency 5
+npm run enrich:apply -- tmp/fire-50-evidence.json --dry-run
+# Audit the preview before the production write:
 npm run enrich:apply -- tmp/fire-50-evidence.json
 ```
 
