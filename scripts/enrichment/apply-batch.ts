@@ -240,12 +240,15 @@ for (const record of payload.records) {
       (!usesEvidenceSemanticsV2 || AUTO_PUBLISH_SERVICE_EVIDENCE_TYPES.has(record.evidenceType)),
   )
 
-  const effectiveExternalCustomerStatus =
-    usesEvidenceSemanticsV2 &&
-    record.servesExternalCustomers === 'yes' &&
-    record.evidenceSupportsExternalCustomers !== true
-      ? 'unknown'
-      : record.servesExternalCustomers
+  // v2 can positively prove external-customer access, but the schema does not
+  // separately prove the negative. Treat an unsupported yes OR any no as unknown
+  // so absence of customer-access evidence cannot automatically exclude a facility.
+  const effectiveExternalCustomerStatus = usesEvidenceSemanticsV2
+    ? record.servesExternalCustomers === 'yes' &&
+      record.evidenceSupportsExternalCustomers === true
+      ? 'yes'
+      : 'unknown'
+    : record.servesExternalCustomers
 
   const result = decide(candidate, {
     ...record,
