@@ -58,13 +58,23 @@ const { data: directory } = await useAsyncData('directory-home', async () => {
 
   if (servicesResult.error) throw servicesResult.error
 
-  const statesResult = await $supabase
-    .from('facilities')
-    .select('state')
-    .eq('publish_status', 'publish')
-    .limit(1000)
+  const stateRows: Array<{ state: string }> = []
+  const statePageSize = 1000
 
-  if (statesResult.error) throw statesResult.error
+  for (let from = 0; ; from += statePageSize) {
+    const statesResult = await $supabase
+      .from('facilities')
+      .select('state')
+      .eq('publish_status', 'publish')
+      .range(from, from + statePageSize - 1)
+
+    if (statesResult.error) throw statesResult.error
+
+    const page = statesResult.data ?? []
+    stateRows.push(...page)
+
+    if (page.length < statePageSize) break
+  }
 
   const serviceCounts: Record<string, number> = {}
   const serviceKeysByFacility: Record<string, string[]> = {}
@@ -78,7 +88,7 @@ const { data: directory } = await useAsyncData('directory-home', async () => {
   }
 
   const stateCounts: Record<string, number> = {}
-  for (const row of statesResult.data ?? []) {
+  for (const row of stateRows) {
     stateCounts[row.state] = (stateCounts[row.state] ?? 0) + 1
   }
 
@@ -89,8 +99,7 @@ const { data: directory } = await useAsyncData('directory-home', async () => {
     serviceKeysByFacility,
     states: Object.entries(stateCounts)
       .map(([code, count]) => ({ code, count }))
-      .sort((a, b) => b.count - a.count || a.code.localeCompare(b.code))
-      .slice(0, 8),
+      .sort((a, b) => stateName(a.code).localeCompare(stateName(b.code))),
   }
 })
 
@@ -212,15 +221,27 @@ useHead({
     </section>
 
     <section v-if="directory?.states.length" class="mx-auto max-w-7xl px-6 py-14">
-      <p class="text-sm font-semibold uppercase tracking-[0.14em] text-slate-500">Browse by state</p>
-      <div class="mt-5 flex flex-wrap gap-3">
+      <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p class="text-sm font-semibold uppercase tracking-[0.14em] text-slate-500">Browse by state</p>
+          <h2 class="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
+            Published providers across {{ directory.states.length }} states
+          </h2>
+        </div>
+        <p class="text-sm text-slate-500">Counts include published facilities only.</p>
+      </div>
+
+      <div class="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
         <NuxtLink
           v-for="state in directory.states"
           :key="state.code"
           :to="statePath(state.code)"
-          class="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:border-slate-400 hover:text-slate-950"
+          class="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 shadow-sm hover:border-teal-300 hover:bg-teal-50 hover:text-slate-950"
         >
-          {{ stateName(state.code) }} · {{ state.count }}
+          <span>{{ stateName(state.code) }}</span>
+          <span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">
+            {{ state.count }}
+          </span>
         </NuxtLink>
       </div>
     </section>
