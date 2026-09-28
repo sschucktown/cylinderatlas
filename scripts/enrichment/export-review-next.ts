@@ -292,20 +292,17 @@ const records = candidates.map(({ facility, result }) => {
     identityConfidence: Number(result.identity_confidence),
     evidenceUrl: rawString(raw, 'evidence_url'),
     evidenceType: rawString(raw, 'evidence_type') as EvidenceType | null,
-    evidenceSupportsServiceKeys: rawStringArray(
-      raw,
-      'evidence_supports_service_keys',
-    ),
-    evidenceSupportsExternalCustomers: rawBoolean(
-      raw,
-      'evidence_supports_external_customers',
-    ),
+    evidenceSupportsServiceKeys:
+      rawStringArray(raw, 'evidence_supports_service_keys') ?? [],
+    evidenceSupportsExternalCustomers:
+      rawBoolean(raw, 'evidence_supports_external_customers') ?? false,
     corroborationEvidenceUrl: rawString(raw, 'corroboration_evidence_url'),
     corroborationEvidenceType: rawString(
       raw,
       'corroboration_evidence_type',
     ) as EvidenceType | null,
-    corroborationSupports: rawStringArray(raw, 'corroboration_supports'),
+    corroborationSupports:
+      rawStringArray(raw, 'corroboration_supports') ?? [],
     summary: result.evidence_summary ?? '',
   }
 })
