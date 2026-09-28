@@ -173,9 +173,6 @@ async function fetchCurrentResults(facilities: FacilityRow[]) {
 }
 
 const allVisibleFacilities = await fetchFacilities(['publish', 'review'])
-const manualReviewFacilities = allVisibleFacilities.filter((facility) => {
-  return true
-})
 
 const reviewIds = new Set<string>()
 {
@@ -194,7 +191,7 @@ const reviewIds = new Set<string>()
   }
 }
 
-const actualReviewFacilities = manualReviewFacilities.filter((facility) =>
+const actualReviewFacilities = allVisibleFacilities.filter((facility) =>
   reviewIds.has(facility.id),
 )
 const currentResults = await fetchCurrentResults(actualReviewFacilities)
