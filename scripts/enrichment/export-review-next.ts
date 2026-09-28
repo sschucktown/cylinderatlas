@@ -303,6 +303,7 @@ const records = candidates.map(({ facility, result }) => {
     ) as EvidenceType | null,
     corroborationSupports:
       rawStringArray(raw, 'corroboration_supports') ?? [],
+    corroborationSummary: null,
     summary: result.evidence_summary ?? '',
   }
 })
