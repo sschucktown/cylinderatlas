@@ -273,7 +273,7 @@ const summary = Object.fromEntries(
 
 const payload = {
   generatedAt: new Date().toISOString(),
-  apiCalls: 0,
+  openAiApiCalls: 0,
   databaseWrites: 0,
   totalManualReview: facilities.length,
   resultsFound: records.length,
