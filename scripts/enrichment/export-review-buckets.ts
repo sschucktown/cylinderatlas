@@ -3,6 +3,8 @@ import { dirname } from 'node:path'
 import { createAdminClient, readFlag } from './admin-client'
 
 type ReviewBucket =
+  | 'multi_rin_same_facility'
+  | 'identity_transition_or_rin_transfer'
   | 'missing_identity_corroboration_only'
   | 'missing_service_evidence_only'
   | 'missing_external_customer_evidence_only'
@@ -138,7 +140,39 @@ function rawBoolean(raw: Record<string, unknown> | null, key: string) {
   return raw?.[key] === true
 }
 
-function classify(row: EnrichmentRow): ReviewBucket {
+function normalizeFacilityKey(value: string | null | undefined) {
+  return (value ?? '')
+    .toUpperCase()
+    .replace(/\bSTREET\b/g, 'ST')
+    .replace(/\bROAD\b/g, 'RD')
+    .replace(/\bAVENUE\b/g, 'AVE')
+    .replace(/\bLANE\b/g, 'LN')
+    .replace(/\bDRIVE\b/g, 'DR')
+    .replace(/\bBOULEVARD\b/g, 'BLVD')
+    .replace(/\bHIGHWAY\b/g, 'HWY')
+    .replace(/\bSUITE\b/g, 'STE')
+    .replace(/[^A-Z0-9]/g, '')
+}
+
+function facilityIdentityKey(facility: FacilityRow) {
+  return [
+    normalizeFacilityKey(facility.phmsa_name),
+    normalizeFacilityKey(facility.phmsa_address),
+    normalizeFacilityKey(facility.city),
+    normalizeFacilityKey(facility.state),
+  ].join('|')
+}
+
+function hasIdentityTransitionSignal(row: EnrichmentRow) {
+  return /\b(acquir|formerly|merger|merged|rename|renamed|d\/?b\/?a|doing business as|moved|relocat|rin transfer|transferred? with the business)\b/i.test(
+    row.evidence_summary ?? '',
+  )
+}
+
+function classify(
+  row: EnrichmentRow,
+  options: { multiRinSameFacility: boolean },
+): ReviewBucket {
   const identityCorroborated = rawBoolean(row.raw_result, 'identity_corroborated')
   const serviceKeys = row.service_keys ?? []
 
@@ -156,6 +190,14 @@ function classify(row: EnrichmentRow): ReviewBucket {
 
   if (!okIdentityMatch || !okIdentityConfidence) {
     return 'identity_unresolved_or_low_confidence'
+  }
+
+  if (options.multiRinSameFacility) {
+    return 'multi_rin_same_facility'
+  }
+
+  if (hasIdentityTransitionSignal(row)) {
+    return 'identity_transition_or_rin_transfer'
   }
 
   if (
@@ -203,6 +245,12 @@ function classify(row: EnrichmentRow): ReviewBucket {
 const facilities = await fetchManualReviewFacilities()
 const currentResults = await fetchCurrentResults(facilities)
 
+const facilityIdentityCounts = facilities.reduce<Map<string, number>>((counts, facility) => {
+  const key = facilityIdentityKey(facility)
+  counts.set(key, (counts.get(key) ?? 0) + 1)
+  return counts
+}, new Map())
+
 const records: ReviewRecord[] = []
 
 for (const facility of facilities) {
@@ -210,7 +258,9 @@ for (const facility of facilities) {
   if (!result) continue
 
   records.push({
-    bucket: classify(result),
+    bucket: classify(result, {
+      multiRinSameFacility: (facilityIdentityCounts.get(facilityIdentityKey(facility)) ?? 0) > 1,
+    }),
     rin: facility.rin,
     phmsaName: facility.phmsa_name,
     phmsaAddress: facility.phmsa_address,
@@ -246,6 +296,8 @@ const bucketOrder: ReviewBucket[] = [
   'missing_identity_corroboration_only',
   'missing_service_evidence_only',
   'missing_external_customer_evidence_only',
+  'multi_rin_same_facility',
+  'identity_transition_or_rin_transfer',
   'identity_conflict',
   'identity_unresolved_or_low_confidence',
   'business_status_only',
