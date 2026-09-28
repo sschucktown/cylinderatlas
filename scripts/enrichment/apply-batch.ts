@@ -250,8 +250,25 @@ for (const record of payload.records) {
       : 'unknown'
     : record.servesExternalCustomers
 
+  // Likewise, model-extracted terminal business statuses are not enough by themselves
+  // to exclude a facility. For v2, require the exact current identity/location/status
+  // to clear the strong corroboration gate before accepting inactive/internal/not_public.
+  // Deterministic obvious-internal rules in rules.ts remain independent of this safeguard.
+  const isTerminalBusinessStatus =
+    record.businessStatus === 'inactive' ||
+    record.businessStatus === 'internal' ||
+    record.businessStatus === 'not_public'
+
+  const effectiveBusinessStatus =
+    usesEvidenceSemanticsV2 && isTerminalBusinessStatus
+      ? identityCorroborated && record.identityConfidence >= 0.85
+        ? record.businessStatus
+        : 'unknown'
+      : record.businessStatus
+
   const result = decide(candidate, {
     ...record,
+    businessStatus: effectiveBusinessStatus,
     servesExternalCustomers: effectiveExternalCustomerStatus,
     serviceKeys: hasStrongAutoPublishServiceEvidence ? evidenceBackedServiceKeys : [],
     identityCorroborated,
