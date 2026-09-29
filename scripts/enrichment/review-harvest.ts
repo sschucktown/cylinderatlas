@@ -15,7 +15,6 @@ type StrongCorroborationType =
   | 'regulatory'
   | 'first_party'
   | 'business_registry'
-  | 'provider_claim'
 
 type CorroborationSupport = 'identity' | 'address' | 'business_status'
 
@@ -116,8 +115,35 @@ const STRONG_CORROBORATION_TYPES = new Set<StrongCorroborationType>([
   'regulatory',
   'first_party',
   'business_registry',
-  'provider_claim',
 ])
+
+const BLOCKED_DIRECTORY_HOSTS = [
+  'bbb.org',
+  'nafed.org',
+  'yelp.com',
+  'yellowpages.com',
+  'chamberofcommerce.com',
+  'sprinklerfitters669.org',
+  'iwdc.coop',
+  'facebook.com',
+  'linkedin.com',
+]
+
+function hostnameMatches(hostname: string, domain: string) {
+  return hostname === domain || hostname.endsWith('.' + domain)
+}
+
+function isBlockedDirectoryUrl(raw: string | null) {
+  if (!raw) return false
+  try {
+    const hostname = new URL(raw).hostname.toLowerCase()
+    return BLOCKED_DIRECTORY_HOSTS.some((domain) =>
+      hostnameMatches(hostname, domain),
+    )
+  } catch {
+    return true
+  }
+}
 
 const identitySchema = {
   type: 'object',
@@ -140,7 +166,6 @@ const identitySchema = {
         'regulatory',
         'first_party',
         'business_registry',
-        'provider_claim',
         null,
       ],
     },
@@ -318,8 +343,9 @@ function buildPrompt(record: ReviewRecord) {
     'Research requirements:',
     '- Perform exactly ONE web search call. Use only sources returned by that search.',
     '- Find a source DISTINCT from the existing primary evidence URL.',
-    '- Accept only a strong corroboration source: a separate first-party provider/company page, official business registry, current government/regulatory record, or provider-confirmed evidence.',
-    '- Do NOT use BBB, Yelp, Yellow Pages, trade/member directories, social media, SEO directories, or other generic directories as the corroboration source.',
+    '- Accept only a strong corroboration source found on the public web: a separate first-party provider/company page, official business registry, or current government/regulatory record.',
+    '- provider_claim is reserved for evidence supplied or confirmed directly through the Cylinder Atlas provider-claim workflow. A web-search result can NEVER be provider_claim.',
+    '- Do NOT use BBB, Yelp, Yellow Pages, trade/member directories, chambers of commerce, social media, SEO directories, or other generic directories as the corroboration source.',
     '- Do NOT use the original PHMSA RIN listing itself as independent current-business corroboration.',
     '- corroborationSupports must list only what the selected source itself proves: identity, address, and/or business_status.',
     '- business_status means the source supports that the business/location is currently active or supports a terminal status such as inactive/closed. Do not mark it merely because a name appears in an old document.',
@@ -422,7 +448,8 @@ function sanitizeResearch(
     url &&
       type &&
       sourceWasConsulted(url, consulted) &&
-      !sameUrl(url, record.evidenceUrl),
+      !sameUrl(url, record.evidenceUrl) &&
+      !isBlockedDirectoryUrl(url),
   )
 
   if (!validSource) {
