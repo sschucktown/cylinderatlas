@@ -107,6 +107,53 @@ function rawStringArray(
     : undefined
 }
 
+const AUTO_PUBLISH_SERVICE_EVIDENCE_TYPES = new Set<EvidenceType>([
+  'first_party',
+  'regulatory',
+  'provider_claim',
+])
+
+function evidenceSupportedServiceKeys(row: EnrichmentRow) {
+  const raw = row.raw_result
+  const evidenceType = rawString(raw, 'evidence_type') as EvidenceType | null
+  if (
+    !evidenceType ||
+    !AUTO_PUBLISH_SERVICE_EVIDENCE_TYPES.has(evidenceType)
+  ) {
+    return []
+  }
+
+  const supported = rawStringArray(raw, 'evidence_supports_service_keys') ?? []
+  const summary = row.evidence_summary ?? ''
+
+  return (row.service_keys ?? [])
+    .filter((key) => supported.includes(key))
+    .filter((key) => {
+      if (key === 'medical-oxygen') {
+        const explicitlyUnsupported =
+          /medical[-\\s]?oxygen.{0,100}(?:not sufficiently supported|not explicitly established|not established|does not establish|insufficient)/i.test(
+            summary,
+          ) ||
+          /(?:not sufficiently supported|not explicitly established|not established|does not establish|insufficient).{0,100}medical[-\\s]?oxygen/i.test(
+            summary,
+          )
+        if (explicitlyUnsupported) return false
+
+        return /\\bmedical(?:[-\\s]+grade)?[-\\s]+(?:oxygen|gas(?:es)?)\\b|\\bhealthcare\\b|\\bhospital\\b|\\bpatient\\b/i.test(
+          summary,
+        )
+      }
+
+      if (key === 'co2-beverage') {
+        return /\\bbeverage\\b|\\bsoda\\b|\\bdraft\\b|\\bkeg\\b|\\brestaurant\\b|\\bfood[-\\s]?service\\b/i.test(
+          summary,
+        )
+      }
+
+      return true
+    })
+}
+
 function hasTransitionOrStructuralHold(row: EnrichmentRow) {
   const text = row.evidence_summary ?? ''
   return (
@@ -221,6 +268,12 @@ const eligibleCandidates = actualReviewFacilities
   .filter(({ facility, result }) => {
     const identityCorroborated =
       result.raw_result?.identity_corroborated === true
+    const supportedServiceKeys = evidenceSupportedServiceKeys(result)
+    const externalCustomerEvidence =
+      rawBoolean(
+        result.raw_result,
+        'evidence_supports_external_customers',
+      ) === true
 
     return (
       result.identity_match === 'matched' &&
@@ -228,8 +281,9 @@ const eligibleCandidates = actualReviewFacilities
       !identityCorroborated &&
       result.business_status === 'active' &&
       result.serves_external_customers === 'yes' &&
+      externalCustomerEvidence &&
       Number(result.service_confidence) >= 0.85 &&
-      (result.service_keys ?? []).length > 0 &&
+      supportedServiceKeys.length > 0 &&
       (facilityCounts.get(facilityKey(facility)) ?? 0) === 1 &&
       !hasTransitionOrStructuralHold(result)
     )
@@ -293,21 +347,27 @@ const candidates = eligibleCandidates
 
 const records = candidates.map(({ facility, result }) => {
   const raw = result.raw_result
+  const supportedServiceKeys = evidenceSupportedServiceKeys(result)
 
   return {
     rin: facility.rin,
+    phmsaName: facility.phmsa_name,
+    phmsaAddress: facility.phmsa_address,
+    city: facility.city,
+    state: facility.state,
+    postalCode: facility.postal_code,
+    candidateTypeHint: facility.candidate_type_hint,
     identityMatch: result.identity_match,
     businessStatus: result.business_status,
     servesExternalCustomers: result.serves_external_customers,
     currentName: result.current_name,
     currentAddress: result.current_address,
-    serviceKeys: result.service_keys ?? [],
+    serviceKeys: supportedServiceKeys,
     serviceConfidence: Number(result.service_confidence),
     identityConfidence: Number(result.identity_confidence),
     evidenceUrl: rawString(raw, 'evidence_url'),
     evidenceType: rawString(raw, 'evidence_type') as EvidenceType | null,
-    evidenceSupportsServiceKeys:
-      rawStringArray(raw, 'evidence_supports_service_keys') ?? [],
+    evidenceSupportsServiceKeys: supportedServiceKeys,
     evidenceSupportsExternalCustomers:
       rawBoolean(raw, 'evidence_supports_external_customers') ?? false,
     corroborationEvidenceUrl: rawString(raw, 'corroboration_evidence_url'),
