@@ -157,15 +157,17 @@ const AUTO_PUBLISH_SERVICE_EVIDENCE_TYPES = new Set([
 ])
 
 function evidenceSupportedServiceKeys(row: EnrichmentRow) {
-  const evidenceType = rawString(row.raw_result, 'evidence_type')
+  const evidenceType =
+    rawString(row.raw_result, 'service_evidence_type') ??
+    rawString(row.raw_result, 'evidence_type')
   if (!evidenceType || !AUTO_PUBLISH_SERVICE_EVIDENCE_TYPES.has(evidenceType)) {
     return []
   }
 
-  const supported = rawStringArray(
-    row.raw_result,
-    'evidence_supports_service_keys',
-  )
+  const supported =
+    rawStringArray(row.raw_result, 'service_evidence_supports_keys').length > 0
+      ? rawStringArray(row.raw_result, 'service_evidence_supports_keys')
+      : rawStringArray(row.raw_result, 'evidence_supports_service_keys')
   const summary = row.evidence_summary ?? ''
 
   return (row.service_keys ?? [])
