@@ -140,6 +140,62 @@ function rawBoolean(raw: Record<string, unknown> | null, key: string) {
   return raw?.[key] === true
 }
 
+function rawStringArray(
+  raw: Record<string, unknown> | null,
+  key: string,
+): string[] {
+  const value = raw?.[key]
+  return Array.isArray(value) && value.every((item) => typeof item === 'string')
+    ? value
+    : []
+}
+
+const AUTO_PUBLISH_SERVICE_EVIDENCE_TYPES = new Set([
+  'first_party',
+  'regulatory',
+  'provider_claim',
+])
+
+function evidenceSupportedServiceKeys(row: EnrichmentRow) {
+  const evidenceType = rawString(row.raw_result, 'evidence_type')
+  if (!evidenceType || !AUTO_PUBLISH_SERVICE_EVIDENCE_TYPES.has(evidenceType)) {
+    return []
+  }
+
+  const supported = rawStringArray(
+    row.raw_result,
+    'evidence_supports_service_keys',
+  )
+  const summary = row.evidence_summary ?? ''
+
+  return (row.service_keys ?? [])
+    .filter((key) => supported.includes(key))
+    .filter((key) => {
+      if (key === 'medical-oxygen') {
+        const explicitlyUnsupported =
+          /medical[-\s]?oxygen.{0,100}(?:not sufficiently supported|not explicitly established|not established|does not establish|insufficient)/i.test(
+            summary,
+          ) ||
+          /(?:not sufficiently supported|not explicitly established|not established|does not establish|insufficient).{0,100}medical[-\s]?oxygen/i.test(
+            summary,
+          )
+        if (explicitlyUnsupported) return false
+
+        return /\bmedical(?:[-\s]+grade)?[-\s]+(?:oxygen|gas(?:es)?)\b|\bhealthcare\b|\bhospital\b|\bpatient\b/i.test(
+          summary,
+        )
+      }
+
+      if (key === 'co2-beverage') {
+        return /\bbeverage\b|\bsoda\b|\bdraft\b|\bkeg\b|\brestaurant\b|\bfood[-\s]?service\b/i.test(
+          summary,
+        )
+      }
+
+      return true
+    })
+}
+
 function normalizeFacilityKey(value: string | null | undefined) {
   return (value ?? '')
     .toUpperCase()
@@ -174,15 +230,17 @@ function classify(
   options: { multiRinSameFacility: boolean },
 ): ReviewBucket {
   const identityCorroborated = rawBoolean(row.raw_result, 'identity_corroborated')
-  const serviceKeys = row.service_keys ?? []
+  const supportedServiceKeys = evidenceSupportedServiceKeys(row)
 
   const okIdentityMatch = row.identity_match === 'matched'
   const okIdentityConfidence = Number(row.identity_confidence) >= 0.85
   const okIdentityCorroboration = identityCorroborated
   const okActive = row.business_status === 'active'
-  const okExternal = row.serves_external_customers === 'yes'
+  const okExternal =
+    row.serves_external_customers === 'yes' &&
+    rawBoolean(row.raw_result, 'evidence_supports_external_customers')
   const okServiceConfidence = Number(row.service_confidence) >= 0.85
-  const okServices = serviceKeys.length > 0
+  const okServices = supportedServiceKeys.length > 0
 
   if (row.identity_match === 'changed' || row.identity_match === 'conflict') {
     return 'identity_conflict'
