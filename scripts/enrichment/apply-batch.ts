@@ -159,6 +159,29 @@ if (missingRins.length) {
   throw new Error('Unknown RINs: ' + missingRins.join(', '))
 }
 
+const existingResultsByFacility = new Map<
+  string,
+  { current_name: string | null; current_address: string | null }
+>()
+
+if (payload.reviewResolution) {
+  const facilityIds = (facilities ?? []).map((facility) => facility.id)
+  const { data: existingResults, error: existingResultsError } = await supabase
+    .from('facility_enrichment_results')
+    .select('facility_id, current_name, current_address')
+    .eq('run_id', run.id)
+    .in('facility_id', facilityIds)
+
+  if (existingResultsError) throw existingResultsError
+
+  for (const row of existingResults ?? []) {
+    existingResultsByFacility.set(row.facility_id, {
+      current_name: row.current_name,
+      current_address: row.current_address,
+    })
+  }
+}
+
 const applied: Array<{ rin: string; decision: string }> = []
 
 interface PreviewRow {
@@ -336,8 +359,23 @@ for (const record of payload.records) {
         : 'unknown'
       : record.businessStatus
 
+  const existingResult = existingResultsByFacility.get(facility.id)
+  const preserveReviewedIdentity =
+    payload.reviewResolution === true &&
+    record.identityMatch === 'matched' &&
+    Boolean(existingResult)
+
+  const effectiveCurrentName = preserveReviewedIdentity
+    ? existingResult?.current_name ?? record.currentName
+    : record.currentName
+  const effectiveCurrentAddress = preserveReviewedIdentity
+    ? existingResult?.current_address ?? record.currentAddress
+    : record.currentAddress
+
   const result = decide(candidate, {
     ...record,
+    currentName: effectiveCurrentName,
+    currentAddress: effectiveCurrentAddress,
     businessStatus: effectiveBusinessStatus,
     servesExternalCustomers: effectiveExternalCustomerStatus,
     serviceKeys: hasStrongAutoPublishServiceEvidence ? evidenceBackedServiceKeys : [],
