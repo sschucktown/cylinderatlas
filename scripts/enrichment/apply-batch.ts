@@ -119,12 +119,16 @@ if (!inputPath) {
 }
 
 const payload = JSON.parse(await readFile(inputPath, 'utf8')) as BatchPayload
-if (!payload.runName || !payload.batch || !Array.isArray(payload.records) || !payload.records.length) {
-  throw new Error('Batch file must include runName, batch, and non-empty records[]')
+if (!payload.runName || !payload.batch || !Array.isArray(payload.records)) {
+  throw new Error('Batch file must include runName, batch, and records[]')
 }
 
 if (payload.complete === false) {
   throw new Error('Refusing to apply an incomplete harvester checkpoint')
+}
+
+if (!payload.records.length) {
+  throw new Error('Refusing to apply a batch with empty records[]')
 }
 
 const duplicateRins = payload.records
