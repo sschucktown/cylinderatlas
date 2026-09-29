@@ -205,7 +205,7 @@ const facilityCounts = allVisibleFacilities.reduce<Map<string, number>>(
   new Map(),
 )
 
-const candidates = actualReviewFacilities
+const eligibleCandidates = actualReviewFacilities
   .map((facility) => ({
     facility,
     result: currentResults.get(facility.id),
@@ -247,35 +247,49 @@ const candidates = actualReviewFacilities
       a.facility.state.localeCompare(b.facility.state) ||
       a.facility.rin.localeCompare(b.facility.rin),
   )
-  .slice(0, limit)
 
-if (!candidates.length) {
+if (!eligibleCandidates.length) {
   throw new Error('No review-resolution candidates found for bucket ' + bucket)
 }
 
-const runIds = [
-  ...new Set(
-    candidates
-      .map(({ facility }) => facility.enrichment_run_id)
-      .filter((value): value is string => Boolean(value)),
-  ),
-]
+const { data: activeRuns, error: activeRunsError } = await supabase
+  .from('enrichment_runs')
+  .select('id, name, status, created_at')
+  .in('status', ['running', 'queued'])
+  .order('created_at', { ascending: false })
 
-if (runIds.length !== 1) {
+if (activeRunsError) throw activeRunsError
+
+const candidateCountsByRun = eligibleCandidates.reduce<Map<string, number>>(
+  (counts, { facility }) => {
+    if (!facility.enrichment_run_id) return counts
+    counts.set(
+      facility.enrichment_run_id,
+      (counts.get(facility.enrichment_run_id) ?? 0) + 1,
+    )
+    return counts
+  },
+  new Map(),
+)
+
+const run = (activeRuns ?? [])
+  .filter((candidateRun) => (candidateCountsByRun.get(candidateRun.id) ?? 0) > 0)
+  .sort(
+    (a, b) =>
+      (candidateCountsByRun.get(b.id) ?? 0) -
+        (candidateCountsByRun.get(a.id) ?? 0) ||
+      String(b.created_at).localeCompare(String(a.created_at)),
+  )[0]
+
+if (!run) {
   throw new Error(
-    'Expected one enrichment run for selected review records, found ' +
-      runIds.length,
+    'No review-resolution candidates belong to a running or queued enrichment run',
   )
 }
 
-const { data: run, error: runError } = await supabase
-  .from('enrichment_runs')
-  .select('id, name')
-  .eq('id', runIds[0])
-  .maybeSingle()
-
-if (runError) throw runError
-if (!run) throw new Error('Enrichment run not found: ' + runIds[0])
+const candidates = eligibleCandidates
+  .filter(({ facility }) => facility.enrichment_run_id === run.id)
+  .slice(0, limit)
 
 const records = candidates.map(({ facility, result }) => {
   const raw = result.raw_result
@@ -334,6 +348,12 @@ console.log(
       output: outputPath,
       selected: records.length,
       openAiApiCalls: 0,
+      activeRun: run.name,
+      skippedInactiveRunCandidates:
+        eligibleCandidates.length -
+        eligibleCandidates.filter(
+          ({ facility }) => facility.enrichment_run_id === run.id,
+        ).length,
       rins: records.map((record) => record.rin),
     },
     null,
