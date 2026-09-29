@@ -115,5 +115,10 @@ The targeted review harvester:
 - checkpoints atomically, resumes completed records, and uses the same cost breaker pattern as the bulk harvester
 - never writes Supabase and never decides publish/review/exclude
 
-Only `apply-batch.ts` runs the deterministic decision gate. Always dry-run the
-review-harvested packet before applying it.
+Only `apply-batch.ts` runs the deterministic decision gate. For review-resolution
+packets it independently validates corroboration source type from the URL/domain instead of
+trusting the research model's label: first-party must match the provider's primary domain,
+regulatory must be a direct `.gov` source, and business-registry evidence must be an
+official registry. Web research cannot manufacture `provider_claim`.
+
+Always dry-run the review-harvested packet before applying it.
