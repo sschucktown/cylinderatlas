@@ -11,6 +11,10 @@ interface BatchRecord extends Omit<EvidenceInput, 'identityCorroborated' | 'evid
   evidenceType?: EvidenceType | null
   evidenceSupportsServiceKeys?: EvidenceInput['serviceKeys']
   evidenceSupportsExternalCustomers?: boolean
+  serviceEvidenceUrl?: string | null
+  serviceEvidenceType?: EvidenceType | null
+  serviceEvidenceSupportsKeys?: EvidenceInput['serviceKeys']
+  serviceEvidenceSummary?: string | null
   corroborationEvidenceUrl?: string | null
   corroborationEvidenceType?: EvidenceType | null
   corroborationSupports?: Array<'identity' | 'address' | 'business_status'>
@@ -161,14 +165,18 @@ if (missingRins.length) {
 
 const existingResultsByFacility = new Map<
   string,
-  { current_name: string | null; current_address: string | null }
+  {
+    current_name: string | null
+    current_address: string | null
+    raw_result: Record<string, unknown> | null
+  }
 >()
 
 if (payload.reviewResolution) {
   const facilityIds = (facilities ?? []).map((facility) => facility.id)
   const { data: existingResults, error: existingResultsError } = await supabase
     .from('facility_enrichment_results')
-    .select('facility_id, current_name, current_address')
+    .select('facility_id, current_name, current_address, raw_result')
     .eq('run_id', run.id)
     .in('facility_id', facilityIds)
 
@@ -178,6 +186,7 @@ if (payload.reviewResolution) {
     existingResultsByFacility.set(row.facility_id, {
       current_name: row.current_name,
       current_address: row.current_address,
+      raw_result: row.raw_result as Record<string, unknown> | null,
     })
   }
 }
@@ -195,6 +204,8 @@ interface PreviewRow {
   evidenceType: EvidenceType | null
   corroborationEvidenceUrl: string | null
   corroborationEvidenceType: EvidenceType | null
+  serviceEvidenceUrl: string | null
+  serviceEvidenceType: EvidenceType | null
   phmsaName: string
   phmsaAddress: string
   currentName: string | null
@@ -308,13 +319,17 @@ for (const record of payload.records) {
 
   const isHarvesterPayload = payload.complete === true
   const usesEvidenceSemanticsV2 = payload.evidenceSemanticsVersion === 2
+  const isServiceResolution =
+    payload.sourceBucket === 'missing_service_evidence_only'
   const strongPrimaryEvidence = Boolean(
     record.evidenceUrl &&
       record.evidenceType &&
       IDENTITY_CORROBORATION_TYPES.has(record.evidenceType),
   )
   const reviewCorroborationAccepted =
-    !payload.reviewResolution || reviewCorroborationSourceIsValid(record)
+    isServiceResolution ||
+    !payload.reviewResolution ||
+    reviewCorroborationSourceIsValid(record)
   const effectiveCorroborationEvidenceUrl = reviewCorroborationAccepted
     ? record.corroborationEvidenceUrl ?? null
     : null
@@ -347,24 +362,51 @@ for (const record of payload.records) {
     payload.reviewResolution === true &&
     hasUnresolvedIdentityLocationConflict(record)
 
-  const identityCorroborated = isHarvesterPayload
+  const existingResult = existingResultsByFacility.get(facility.id)
+  const existingIdentityCorroborated =
+    existingResult?.raw_result?.identity_corroborated === true
+
+  const identityCorroborated = isServiceResolution
     ? Boolean(
-        strongCorroborationEvidence &&
-          record.currentName &&
-          record.currentAddress &&
-          !unresolvedIdentityLocationConflict &&
-          (!usesEvidenceSemanticsV2 || corroborationSupportsRequiredIdentityFields),
+        existingIdentityCorroborated &&
+          record.identityMatch === 'matched' &&
+          record.identityConfidence >= 0.85 &&
+          !unresolvedIdentityLocationConflict,
       )
-    : strongPrimaryEvidence || strongCorroborationEvidence
+    : isHarvesterPayload
+      ? Boolean(
+          strongCorroborationEvidence &&
+            record.currentName &&
+            record.currentAddress &&
+            !unresolvedIdentityLocationConflict &&
+            (!usesEvidenceSemanticsV2 ||
+              corroborationSupportsRequiredIdentityFields),
+        )
+      : strongPrimaryEvidence || strongCorroborationEvidence
+
+  const effectiveServiceEvidenceUrl = isServiceResolution
+    ? record.serviceEvidenceUrl ?? null
+    : record.evidenceUrl ?? null
+  const effectiveServiceEvidenceType = isServiceResolution
+    ? record.serviceEvidenceType ?? null
+    : record.evidenceType ?? null
+  const effectiveServiceEvidenceSupportsKeys = isServiceResolution
+    ? record.serviceEvidenceSupportsKeys ?? []
+    : record.evidenceSupportsServiceKeys ?? []
 
   const evidenceBackedServiceKeys = usesEvidenceSemanticsV2
-    ? record.serviceKeys.filter((key) => record.evidenceSupportsServiceKeys?.includes(key))
+    ? record.serviceKeys.filter((key) =>
+        effectiveServiceEvidenceSupportsKeys.includes(key),
+      )
     : record.serviceKeys
 
   const hasStrongAutoPublishServiceEvidence = Boolean(
-    record.evidenceUrl &&
-      record.evidenceType &&
-      (!usesEvidenceSemanticsV2 || AUTO_PUBLISH_SERVICE_EVIDENCE_TYPES.has(record.evidenceType)),
+    effectiveServiceEvidenceUrl &&
+      effectiveServiceEvidenceType &&
+      (!usesEvidenceSemanticsV2 ||
+        AUTO_PUBLISH_SERVICE_EVIDENCE_TYPES.has(
+          effectiveServiceEvidenceType,
+        )),
   )
 
   // v2 can positively prove external-customer access, but the schema does not
@@ -393,7 +435,6 @@ for (const record of payload.records) {
         : 'unknown'
       : record.businessStatus
 
-  const existingResult = existingResultsByFacility.get(facility.id)
   const preserveReviewedIdentity =
     payload.reviewResolution === true &&
     record.identityMatch === 'matched' &&
@@ -414,9 +455,11 @@ for (const record of payload.records) {
     servesExternalCustomers: effectiveExternalCustomerStatus,
     serviceKeys: hasStrongAutoPublishServiceEvidence ? evidenceBackedServiceKeys : [],
     identityCorroborated,
-    evidenceUrls: [record.evidenceUrl, effectiveCorroborationEvidenceUrl].filter(
-      (url): url is string => Boolean(url),
-    ),
+    evidenceUrls: [
+      record.evidenceUrl,
+      effectiveServiceEvidenceUrl,
+      effectiveCorroborationEvidenceUrl,
+    ].filter((url): url is string => Boolean(url)),
   })
 
   applied.push({ rin: facility.rin, decision: result.decision })
@@ -433,6 +476,8 @@ for (const record of payload.records) {
       evidenceType: record.evidenceType ?? null,
       corroborationEvidenceUrl: effectiveCorroborationEvidenceUrl,
       corroborationEvidenceType: effectiveCorroborationEvidenceType,
+      serviceEvidenceUrl: effectiveServiceEvidenceUrl,
+      serviceEvidenceType: effectiveServiceEvidenceType,
       phmsaName: candidate.phmsa_name,
       phmsaAddress: candidate.phmsa_address,
       currentName: result.currentName ?? null,
@@ -471,6 +516,18 @@ for (const record of payload.records) {
           evidence_semantics_version: payload.evidenceSemanticsVersion ?? null,
           evidence_supports_service_keys: record.evidenceSupportsServiceKeys ?? null,
           evidence_supports_external_customers: record.evidenceSupportsExternalCustomers ?? null,
+          service_evidence_url: isServiceResolution
+            ? effectiveServiceEvidenceUrl
+            : existingResult?.raw_result?.service_evidence_url ?? null,
+          service_evidence_type: isServiceResolution
+            ? effectiveServiceEvidenceType
+            : existingResult?.raw_result?.service_evidence_type ?? null,
+          service_evidence_supports_keys: isServiceResolution
+            ? effectiveServiceEvidenceSupportsKeys
+            : existingResult?.raw_result?.service_evidence_supports_keys ?? null,
+          service_evidence_summary: isServiceResolution
+            ? record.serviceEvidenceSummary ?? null
+            : existingResult?.raw_result?.service_evidence_summary ?? null,
           corroboration_supports: effectiveCorroborationSupports,
           corroboration_evidence_url: effectiveCorroborationEvidenceUrl,
           corroboration_evidence_type: effectiveCorroborationEvidenceType,
@@ -491,8 +548,8 @@ for (const record of payload.records) {
     result.identityConfidence >= 0.85 &&
     identityCorroborated &&
     result.serviceConfidence >= 0.85 &&
-    record.evidenceUrl &&
-    record.evidenceType
+    effectiveServiceEvidenceUrl &&
+    effectiveServiceEvidenceType
       ? result.serviceKeys
       : []
 
@@ -510,6 +567,39 @@ for (const record of payload.records) {
       )
 
     if (serviceError) throw serviceError
+  }
+
+  if (
+    isServiceResolution &&
+    effectiveServiceEvidenceUrl &&
+    effectiveServiceEvidenceType
+  ) {
+    const { data: existingServiceEvidence, error: serviceEvidenceLookupError } =
+      await supabase
+        .from('evidence')
+        .select('id')
+        .eq('facility_id', facility.id)
+        .eq('supports_field', 'national-enrichment-v1-service')
+        .eq('url', effectiveServiceEvidenceUrl)
+        .limit(1)
+
+    if (serviceEvidenceLookupError) throw serviceEvidenceLookupError
+
+    if (!existingServiceEvidence?.length) {
+      const { error: serviceEvidenceError } = await supabase
+        .from('evidence')
+        .insert({
+          facility_id: facility.id,
+          evidence_type: effectiveServiceEvidenceType,
+          url: effectiveServiceEvidenceUrl,
+          supports_field: 'national-enrichment-v1-service',
+          summary:
+            record.serviceEvidenceSummary ??
+            'Current service-category evidence.',
+        })
+
+      if (serviceEvidenceError) throw serviceEvidenceError
+    }
   }
 
   if (record.evidenceUrl && record.evidenceType) {
