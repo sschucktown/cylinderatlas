@@ -573,12 +573,24 @@ function mergeRecord(record: ReviewRecord, research: IdentityResearch) {
     )
   }
 
+  const useResearchIdentityFields =
+    research.identityMatch === 'changed' ||
+    research.identityMatch === 'conflict'
+
   return {
     ...record,
     identityMatch: research.identityMatch,
     businessStatus: research.businessStatus,
-    currentName: research.currentName,
-    currentAddress: research.currentAddress,
+    // For a clean match, preserve the existing reviewed display identity/address.
+    // The targeted pass exists to corroborate those fields, not rewrite them with
+    // search-result formatting or marketing labels. Only a changed/conflict result
+    // may replace them so the discrepancy is visible in review.
+    currentName: useResearchIdentityFields
+      ? research.currentName
+      : record.currentName,
+    currentAddress: useResearchIdentityFields
+      ? research.currentAddress
+      : record.currentAddress,
     identityConfidence: research.identityConfidence,
     corroborationEvidenceUrl: research.corroborationEvidenceUrl,
     corroborationEvidenceType: research.corroborationEvidenceType,
