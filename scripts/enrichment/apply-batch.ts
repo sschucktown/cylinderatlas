@@ -220,6 +220,21 @@ function normalizeComparison(value: string | null | undefined) {
     .replace(/[^A-Z0-9]/g, '')
 }
 
+function hasUnresolvedIdentityLocationConflict(record: BatchRecord) {
+  const text = [record.summary, record.corroborationSummary]
+    .filter(Boolean)
+    .join(' ')
+
+  return (
+    /\b(?:different|conflicting|inconsistent|mismatched|alternate)\b.{0,100}\b(?:address|location)\b/i.test(
+      text,
+    ) ||
+    /\b(?:address|location)\b.{0,100}\b(?:different|conflicting|inconsistent|mismatch)\b/i.test(
+      text,
+    )
+  )
+}
+
 function auditRisk(
   candidate: FacilityCandidate,
   record: BatchRecord,
@@ -328,11 +343,16 @@ for (const record of payload.records) {
     effectiveCorroborationSupports.includes('address') &&
     effectiveCorroborationSupports.includes('business_status')
 
+  const unresolvedIdentityLocationConflict =
+    payload.reviewResolution === true &&
+    hasUnresolvedIdentityLocationConflict(record)
+
   const identityCorroborated = isHarvesterPayload
     ? Boolean(
         strongCorroborationEvidence &&
           record.currentName &&
           record.currentAddress &&
+          !unresolvedIdentityLocationConflict &&
           (!usesEvidenceSemanticsV2 || corroborationSupportsRequiredIdentityFields),
       )
     : strongPrimaryEvidence || strongCorroborationEvidence
