@@ -164,7 +164,7 @@ function facilityIdentityKey(facility: FacilityRow) {
 }
 
 function hasIdentityTransitionSignal(row: EnrichmentRow) {
-  return /\b(acquir|formerly|merger|merged|rename|renamed|d\/?b\/?a|doing business as|moved|relocat|rin transfer|transferred? with the business)\b/i.test(
+  return /\b(?:acquir\w*|formerly|merger|merged|renam\w*|d\/?b\/?a|doing business as|moved|relocat\w*|rin transfer|transferred? with the business|lineage|successor)\b/i.test(
     row.evidence_summary ?? '',
   )
 }
