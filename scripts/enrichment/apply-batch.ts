@@ -269,12 +269,14 @@ function auditRisk(
     reasons.push(`multi-service publish (${result.serviceKeys.length})`)
   }
 
+  const auditServiceEvidenceType =
+    record.serviceEvidenceType ?? record.evidenceType
   if (
-    record.evidenceType &&
-    !AUTO_PUBLISH_SERVICE_EVIDENCE_TYPES.has(record.evidenceType)
+    auditServiceEvidenceType &&
+    !AUTO_PUBLISH_SERVICE_EVIDENCE_TYPES.has(auditServiceEvidenceType)
   ) {
     score += 10
-    reasons.push(`weak primary evidence type: ${record.evidenceType}`)
+    reasons.push(`weak service evidence type: ${auditServiceEvidenceType}`)
   }
 
   const currentAddress = normalizeComparison(result.currentAddress)
