@@ -298,11 +298,25 @@ for (const record of payload.records) {
       record.evidenceType &&
       IDENTITY_CORROBORATION_TYPES.has(record.evidenceType),
   )
+  const reviewCorroborationAccepted =
+    !payload.reviewResolution || reviewCorroborationSourceIsValid(record)
+  const effectiveCorroborationEvidenceUrl = reviewCorroborationAccepted
+    ? record.corroborationEvidenceUrl ?? null
+    : null
+  const effectiveCorroborationEvidenceType = reviewCorroborationAccepted
+    ? record.corroborationEvidenceType ?? null
+    : null
+  const effectiveCorroborationSupports = reviewCorroborationAccepted
+    ? record.corroborationSupports ?? []
+    : []
+  const effectiveCorroborationSummary = reviewCorroborationAccepted
+    ? record.corroborationSummary ?? null
+    : null
+
   const strongCorroborationEvidence = Boolean(
-    record.corroborationEvidenceUrl &&
-      record.corroborationEvidenceType &&
-      IDENTITY_CORROBORATION_TYPES.has(record.corroborationEvidenceType) &&
-      (!payload.reviewResolution || reviewCorroborationSourceIsValid(record)),
+    effectiveCorroborationEvidenceUrl &&
+      effectiveCorroborationEvidenceType &&
+      IDENTITY_CORROBORATION_TYPES.has(effectiveCorroborationEvidenceType),
   )
 
   // Harvester packets reserve the primary source for service/customer evidence and
@@ -310,9 +324,9 @@ for (const record of payload.records) {
   // the distinct corroboration source plus extracted current identity/location before
   // allowing the deterministic publish gate to clear.
   const corroborationSupportsRequiredIdentityFields =
-    record.corroborationSupports?.includes('identity') === true &&
-    record.corroborationSupports?.includes('address') === true &&
-    record.corroborationSupports?.includes('business_status') === true
+    effectiveCorroborationSupports.includes('identity') &&
+    effectiveCorroborationSupports.includes('address') &&
+    effectiveCorroborationSupports.includes('business_status')
 
   const identityCorroborated = isHarvesterPayload
     ? Boolean(
@@ -380,7 +394,7 @@ for (const record of payload.records) {
     servesExternalCustomers: effectiveExternalCustomerStatus,
     serviceKeys: hasStrongAutoPublishServiceEvidence ? evidenceBackedServiceKeys : [],
     identityCorroborated,
-    evidenceUrls: [record.evidenceUrl, record.corroborationEvidenceUrl].filter(
+    evidenceUrls: [record.evidenceUrl, effectiveCorroborationEvidenceUrl].filter(
       (url): url is string => Boolean(url),
     ),
   })
@@ -397,8 +411,8 @@ for (const record of payload.records) {
       serviceKeys: result.serviceKeys,
       evidenceUrl: record.evidenceUrl ?? null,
       evidenceType: record.evidenceType ?? null,
-      corroborationEvidenceUrl: record.corroborationEvidenceUrl ?? null,
-      corroborationEvidenceType: record.corroborationEvidenceType ?? null,
+      corroborationEvidenceUrl: effectiveCorroborationEvidenceUrl,
+      corroborationEvidenceType: effectiveCorroborationEvidenceType,
       phmsaName: candidate.phmsa_name,
       phmsaAddress: candidate.phmsa_address,
       currentName: result.currentName ?? null,
@@ -437,9 +451,9 @@ for (const record of payload.records) {
           evidence_semantics_version: payload.evidenceSemanticsVersion ?? null,
           evidence_supports_service_keys: record.evidenceSupportsServiceKeys ?? null,
           evidence_supports_external_customers: record.evidenceSupportsExternalCustomers ?? null,
-          corroboration_supports: record.corroborationSupports ?? null,
-          corroboration_evidence_url: record.corroborationEvidenceUrl ?? null,
-          corroboration_evidence_type: record.corroborationEvidenceType ?? null,
+          corroboration_supports: effectiveCorroborationSupports,
+          corroboration_evidence_url: effectiveCorroborationEvidenceUrl,
+          corroboration_evidence_type: effectiveCorroborationEvidenceType,
         },
         checked_at: new Date().toISOString(),
       },
@@ -502,13 +516,16 @@ for (const record of payload.records) {
     }
   }
 
-  if (record.corroborationEvidenceUrl && record.corroborationEvidenceType) {
+  if (
+    effectiveCorroborationEvidenceUrl &&
+    effectiveCorroborationEvidenceType
+  ) {
     const { data: existingCorroboration, error: corroborationLookupError } = await supabase
       .from('evidence')
       .select('id')
       .eq('facility_id', facility.id)
       .eq('supports_field', 'national-enrichment-v1-corroboration')
-      .eq('url', record.corroborationEvidenceUrl)
+      .eq('url', effectiveCorroborationEvidenceUrl)
       .limit(1)
 
     if (corroborationLookupError) throw corroborationLookupError
@@ -516,11 +533,11 @@ for (const record of payload.records) {
     if (!existingCorroboration?.length) {
       const { error: corroborationError } = await supabase.from('evidence').insert({
         facility_id: facility.id,
-        evidence_type: record.corroborationEvidenceType,
-        url: record.corroborationEvidenceUrl,
+        evidence_type: effectiveCorroborationEvidenceType,
+        url: effectiveCorroborationEvidenceUrl,
         supports_field: 'national-enrichment-v1-corroboration',
         summary:
-          record.corroborationSummary ??
+          effectiveCorroborationSummary ??
           'Independent current identity/location/business-status corroboration.',
       })
 
