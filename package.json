@@ -10,7 +10,7 @@
     "postinstall": "nuxt prepare",
     "enrich:canary": "tsx scripts/enrichment/run-canary.ts",
     "enrich:next": "tsx scripts/enrichment/export-next-batch.ts",
-    "enrich:apply": "tsx scripts/enrichment/apply-batch.ts",
+    "enrich:apply": "node --env-file=.env --import tsx scripts/enrichment/apply-batch.ts",
     "enrich:harvest": "tsx scripts/enrichment/harvest-batch.ts",
     "enrich:review-buckets": "tsx scripts/enrichment/export-review-buckets.ts",
     "enrich:review-next": "node --env-file=.env --import tsx scripts/enrichment/export-review-next.ts",
