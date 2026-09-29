@@ -274,11 +274,14 @@ const eligibleCandidates = actualReviewFacilities
         result.raw_result,
         'evidence_supports_external_customers',
       ) === true
+    const previousReviewResolutionBatch =
+      rawString(result.raw_result, 'batch')?.startsWith('review-harvest-') === true
 
     return (
       result.identity_match === 'matched' &&
       Number(result.identity_confidence) >= 0.85 &&
       !identityCorroborated &&
+      !previousReviewResolutionBatch &&
       result.business_status === 'active' &&
       result.serves_external_customers === 'yes' &&
       externalCustomerEvidence &&
