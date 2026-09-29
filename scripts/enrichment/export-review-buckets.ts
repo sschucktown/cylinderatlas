@@ -164,9 +164,11 @@ function evidenceSupportedServiceKeys(row: EnrichmentRow) {
     return []
   }
 
+  const dedicatedSupported = row.raw_result?.service_evidence_supports_keys
   const supported =
-    rawStringArray(row.raw_result, 'service_evidence_supports_keys').length > 0
-      ? rawStringArray(row.raw_result, 'service_evidence_supports_keys')
+    Array.isArray(dedicatedSupported) &&
+    dedicatedSupported.every((item) => typeof item === 'string')
+      ? (dedicatedSupported as string[])
       : rawStringArray(row.raw_result, 'evidence_supports_service_keys')
   const summary = row.evidence_summary ?? ''
 
