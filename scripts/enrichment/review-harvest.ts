@@ -145,6 +145,54 @@ function isBlockedDirectoryUrl(raw: string | null) {
   }
 }
 
+const TRUSTED_NON_GOV_REGISTRY_HOSTS = ['sunbiz.org']
+
+function urlHostname(raw: string | null | undefined) {
+  if (!raw) return null
+  try {
+    return new URL(raw).hostname.toLowerCase()
+  } catch {
+    return null
+  }
+}
+
+function isGovernmentUrl(raw: string | null | undefined) {
+  const hostname = urlHostname(raw)
+  return Boolean(
+    hostname &&
+      (hostname === 'gov' ||
+        hostname.endsWith('.gov')),
+  )
+}
+
+function isPlausibleBusinessRegistry(raw: string | null | undefined) {
+  const hostname = urlHostname(raw)
+  if (!hostname) return false
+  return (
+    isGovernmentUrl(raw) ||
+    TRUSTED_NON_GOV_REGISTRY_HOSTS.some((domain) =>
+      hostnameMatches(hostname, domain),
+    )
+  )
+}
+
+function sourceTypeMatchesUrl(
+  type: StrongCorroborationType,
+  url: string,
+  primaryUrl: string | null,
+) {
+  if (type === 'first_party') {
+    return isPlausibleFirstParty(url, primaryUrl)
+  }
+  if (type === 'regulatory') {
+    return isGovernmentUrl(url)
+  }
+  if (type === 'business_registry') {
+    return isPlausibleBusinessRegistry(url)
+  }
+  return false
+}
+
 const identitySchema = {
   type: 'object',
   properties: {
@@ -367,7 +415,9 @@ function buildPrompt(record: ReviewRecord) {
     'Research requirements:',
     '- Perform exactly ONE web search call. Use only sources returned by that search.',
     '- Find a source DISTINCT from the existing primary evidence URL.',
-    '- Accept only a strong corroboration source found on the public web: a separate first-party provider/company page, official business registry, or current government/regulatory record.',
+    '- Accept only a strong corroboration source found on the public web: a separate first-party provider/company page on the provider domain, an official business registry, or a current government/regulatory record.',
+    '- regulatory must be a direct government (.gov) source. A private site hosting or summarizing government-derived data is not regulatory evidence.',
+    '- business_registry must be an official government registry (or an explicitly recognized official registry host such as Sunbiz), not a chamber or business directory.',
     '- provider_claim is reserved for evidence supplied or confirmed directly through the Cylinder Atlas provider-claim workflow. A web-search result can NEVER be provider_claim.',
     '- Do NOT use BBB, Yelp, Yellow Pages, trade/member directories, chambers of commerce, social media, SEO directories, or other generic directories as the corroboration source.',
     '- Do NOT use the original PHMSA RIN listing itself as independent current-business corroboration.',
@@ -474,8 +524,7 @@ function sanitizeResearch(
       sourceWasConsulted(url, consulted) &&
       !sameUrl(url, record.evidenceUrl) &&
       !isBlockedDirectoryUrl(url) &&
-      (type !== 'first_party' ||
-        isPlausibleFirstParty(url, record.evidenceUrl)),
+      sourceTypeMatchesUrl(type, url, record.evidenceUrl),
   )
 
   if (!validSource) {
