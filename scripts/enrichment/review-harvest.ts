@@ -320,6 +320,30 @@ function sameUrl(
   return Boolean(a && b && normalizeUrl(a) === normalizeUrl(b))
 }
 
+function siteDomain(raw: string | null | undefined) {
+  if (!raw) return null
+  try {
+    const parts = new URL(raw).hostname.toLowerCase().split('.').filter(Boolean)
+    if (parts.length < 2) return parts[0] ?? null
+    return parts.slice(-2).join('.')
+  } catch {
+    return null
+  }
+}
+
+function isPlausibleFirstParty(
+  corroborationUrl: string | null,
+  primaryUrl: string | null,
+) {
+  const corroborationDomain = siteDomain(corroborationUrl)
+  const primaryDomain = siteDomain(primaryUrl)
+  return Boolean(
+    corroborationDomain &&
+      primaryDomain &&
+      corroborationDomain === primaryDomain,
+  )
+}
+
 function buildPrompt(record: ReviewRecord) {
   return [
     'Research ONLY independent current-business identity corroboration for this U.S. DOT cylinder requalification facility.',
@@ -449,7 +473,9 @@ function sanitizeResearch(
       type &&
       sourceWasConsulted(url, consulted) &&
       !sameUrl(url, record.evidenceUrl) &&
-      !isBlockedDirectoryUrl(url),
+      !isBlockedDirectoryUrl(url) &&
+      (type !== 'first_party' ||
+        isPlausibleFirstParty(url, record.evidenceUrl)),
   )
 
   if (!validSource) {
