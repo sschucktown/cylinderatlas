@@ -30,11 +30,80 @@ const AUTO_PUBLISH_SERVICE_EVIDENCE_TYPES = new Set<EvidenceType>([
   'provider_claim',
 ])
 
+
+const TRUSTED_NON_GOV_REGISTRY_HOSTS = ['sunbiz.org']
+
+function hostnameMatches(hostname: string, domain: string) {
+  return hostname === domain || hostname.endsWith('.' + domain)
+}
+
+function urlHostname(raw: string | null | undefined) {
+  if (!raw) return null
+  try {
+    return new URL(raw).hostname.toLowerCase()
+  } catch {
+    return null
+  }
+}
+
+function siteDomain(raw: string | null | undefined) {
+  const hostname = urlHostname(raw)
+  if (!hostname) return null
+  const parts = hostname.split('.').filter(Boolean)
+  if (parts.length < 2) return parts[0] ?? null
+  return parts.slice(-2).join('.')
+}
+
+function isGovernmentUrl(raw: string | null | undefined) {
+  const hostname = urlHostname(raw)
+  return Boolean(hostname && (hostname === 'gov' || hostname.endsWith('.gov')))
+}
+
+function isPlausibleBusinessRegistry(raw: string | null | undefined) {
+  const hostname = urlHostname(raw)
+  if (!hostname) return false
+  return (
+    isGovernmentUrl(raw) ||
+    TRUSTED_NON_GOV_REGISTRY_HOSTS.some((domain) =>
+      hostnameMatches(hostname, domain),
+    )
+  )
+}
+
+function reviewCorroborationSourceIsValid(record: BatchRecord) {
+  const url = record.corroborationEvidenceUrl
+  const type = record.corroborationEvidenceType
+  if (!url || !type) return false
+
+  if (type === 'first_party') {
+    const primaryDomain = siteDomain(record.evidenceUrl)
+    const corroborationDomain = siteDomain(url)
+    return Boolean(
+      primaryDomain &&
+        corroborationDomain &&
+        primaryDomain === corroborationDomain,
+    )
+  }
+
+  if (type === 'regulatory') {
+    return isGovernmentUrl(url)
+  }
+
+  if (type === 'business_registry') {
+    return isPlausibleBusinessRegistry(url)
+  }
+
+  // Web-researched review resolution must never manufacture provider_claim.
+  return false
+}
+
 interface BatchPayload {
   runName: string
   batch: string
   complete?: boolean
   evidenceSemanticsVersion?: number
+  reviewResolution?: boolean
+  sourceBucket?: string
   records: BatchRecord[]
 }
 
@@ -209,7 +278,8 @@ for (const record of payload.records) {
   const strongCorroborationEvidence = Boolean(
     record.corroborationEvidenceUrl &&
       record.corroborationEvidenceType &&
-      IDENTITY_CORROBORATION_TYPES.has(record.corroborationEvidenceType),
+      IDENTITY_CORROBORATION_TYPES.has(record.corroborationEvidenceType) &&
+      (!payload.reviewResolution || reviewCorroborationSourceIsValid(record)),
   )
 
   // Harvester packets reserve the primary source for service/customer evidence and
