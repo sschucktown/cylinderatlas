@@ -80,3 +80,40 @@ An interrupted or partially failed harvester writes `complete: false`; the appli
 For validated v2 batches, dry-run output includes `auditPublishCandidates`: the five highest-risk proposed publishes ranked by low confidence, multi-service breadth, address differences, and acquisition/rename/move signals. Audit those five plus every proposed exclusion before applying. Full publish/review candidate lists remain in the preview for deeper investigation when needed.
 
 Before resuming larger batches, run a fresh 10-record cost canary and inspect actual API usage, estimated cost, identity/location continuity, customer access, service evidence, provenance, and false-publish count. Do not scale if quality regresses or projected cost exceeds the configured breaker.
+
+
+## Targeted manual-review resolution
+
+The first automated review-resolution slice handles `missing_identity_corroboration_only`.
+It preserves already-qualified service/customer evidence and spends new research only on
+independent current identity/location/business-status corroboration.
+
+```bash
+npm run enrich:review-next -- --bucket missing_identity_corroboration_only --limit 25 --output tmp/review-identity-next.json
+npm run enrich:review-harvest -- --input tmp/review-identity-next.json --output tmp/review-identity-evidence.json --concurrency 5
+npm run enrich:apply -- tmp/review-identity-evidence.json --dry-run
+# Audit proposed publishes/excludes before any production write.
+```
+
+The review exporter is intentionally stricter than the raw review-bucket label:
+
+- the active national enrichment run is selected; completed historical runs are skipped
+- primary service evidence must be first-party, regulatory, or provider-confirmed
+- the primary source must explicitly support outside-customer access
+- only explicitly supported service keys are carried forward
+- high-specificity taxonomy keys such as medical oxygen and beverage CO2 are removed unless the evidence summary explicitly supports that use case
+- PHMSA name/address/city/state/postal fields are embedded in the packet so review research is facility-specific
+
+The targeted review harvester:
+
+- performs at most one web-search call per record
+- preserves the existing primary service/customer evidence
+- accepts corroboration only from a distinct first-party, regulatory, business-registry, or provider-confirmed source
+- treats suite/unit differences as material and never assumes a RIN moved with a business
+- validates the selected corroboration URL against sources actually consulted
+- records exactly which of identity, address, and business status the source supports
+- checkpoints atomically, resumes completed records, and uses the same cost breaker pattern as the bulk harvester
+- never writes Supabase and never decides publish/review/exclude
+
+Only `apply-batch.ts` runs the deterministic decision gate. Always dry-run the
+review-harvested packet before applying it.
