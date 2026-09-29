@@ -197,7 +197,6 @@ const serviceSchema = {
     serviceKeys: {
       type: 'array',
       items: { type: 'string', enum: SERVICE_KEYS },
-      uniqueItems: true,
     },
     serviceConfidence: { type: 'number', minimum: 0, maximum: 1 },
     serviceEvidenceUrl: { type: ['string', 'null'] },
@@ -208,7 +207,6 @@ const serviceSchema = {
     serviceEvidenceSupportsKeys: {
       type: 'array',
       items: { type: 'string', enum: SERVICE_KEYS },
-      uniqueItems: true,
     },
     serviceEvidenceSummary: { type: ['string', 'null'] },
   },
