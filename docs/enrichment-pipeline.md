@@ -122,3 +122,34 @@ regulatory must be a direct `.gov` source, and business-registry evidence must b
 official registry. Web research cannot manufacture `provider_claim`.
 
 Always dry-run the review-harvested packet before applying it.
+
+
+### Targeted missing-service resolution
+
+After the identity-only queue is exhausted, resolve `missing_service_evidence_only`
+without replacing identity or customer-access provenance.
+
+```bash
+npm run enrich:review-next -- --bucket missing_service_evidence_only --limit 25 --output tmp/review-service-next.json
+npm run enrich:review-service-harvest -- --input tmp/review-service-next.json --output tmp/review-service-evidence.json --concurrency 5
+npm run enrich:apply -- tmp/review-service-evidence.json --dry-run
+# Audit every proposed publish/exclude before any production write.
+```
+
+The service-resolution slice:
+
+- requires the facility's current identity to already be matched and corroborated
+- requires active-business and outside-customer evidence to already be present
+- performs at most one web-search call per record
+- researches only the MVP service taxonomy; it does not reopen identity decisions
+- accepts auto-publish service evidence only from a verified first-party provider domain or direct government/regulatory source
+- never infers a use case from PHMSA cylinder specifications, company names, or generic cylinder mentions
+- applies additional specificity checks for medical oxygen, beverage CO2, SCUBA, SCBA, propane, industrial/welding gas, paintball, and specialty/aviation/marine
+- stores new service evidence separately from the existing primary identity/customer-access evidence
+- preserves the existing current name/address and previously accepted identity corroboration
+- checkpoints, resumes, and uses the same cost-breaker pattern as the identity review harvester
+- never writes Supabase; only the deterministic applier may change provider state
+
+The applier keeps `service_evidence_url`, `service_evidence_type`, and
+`service_evidence_supports_keys` separate in `raw_result`, and persists the
+service source with `supports_field = national-enrichment-v1-service`.
