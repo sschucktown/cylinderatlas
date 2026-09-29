@@ -110,7 +110,7 @@ function rawStringArray(
 function hasTransitionOrStructuralHold(row: EnrichmentRow) {
   const text = row.evidence_summary ?? ''
   return (
-    /\b(acquir|formerly|merger|merged|rename|renamed|d\/?b\/?a|doing business as|moved|relocat|rin transfer|transferred? with the business)\b/i.test(
+    /\b(?:acquir\w*|formerly|merger|merged|renam\w*|d\/?b\/?a|doing business as|moved|relocat\w*|rin transfer|transferred? with the business|lineage|successor)\b/i.test(
       text,
     ) ||
     /manual audit hold|multiple phmsa rins|multi-rin/i.test(text)
