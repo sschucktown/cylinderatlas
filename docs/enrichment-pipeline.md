@@ -108,7 +108,7 @@ The targeted review harvester:
 
 - performs at most one web-search call per record
 - preserves the existing primary service/customer evidence
-- accepts corroboration only from a distinct first-party, regulatory, business-registry, or provider-confirmed source
+- accepts web-researched corroboration only from a distinct first-party, regulatory, or business-registry source; `provider_claim` is reserved for evidence supplied through the provider-claim workflow
 - treats suite/unit differences as material and never assumes a RIN moved with a business
 - validates the selected corroboration URL against sources actually consulted
 - records exactly which of identity, address, and business status the source supports
