@@ -42,9 +42,14 @@ const limit = readPositiveIntFlag('limit', 10)
 const outputPath =
   readFlag('output') ?? 'tmp/review-' + bucket + '-next.json'
 
-if (bucket !== 'missing_identity_corroboration_only') {
+const supportedBuckets = new Set([
+  'missing_identity_corroboration_only',
+  'missing_service_evidence_only',
+])
+
+if (!supportedBuckets.has(bucket)) {
   throw new Error(
-    'Only missing_identity_corroboration_only is supported by the first review-resolution slice',
+    'Supported review-resolution buckets: missing_identity_corroboration_only, missing_service_evidence_only',
   )
 }
 
@@ -274,22 +279,37 @@ const eligibleCandidates = actualReviewFacilities
         result.raw_result,
         'evidence_supports_external_customers',
       ) === true
-    const previousReviewResolutionBatch =
-      rawString(result.raw_result, 'batch')?.startsWith('review-harvest-') === true
-
-    return (
+    const previousBatch = rawString(result.raw_result, 'batch') ?? ''
+    const commonEligible =
       result.identity_match === 'matched' &&
       Number(result.identity_confidence) >= 0.85 &&
-      !identityCorroborated &&
-      !previousReviewResolutionBatch &&
       result.business_status === 'active' &&
       result.serves_external_customers === 'yes' &&
       externalCustomerEvidence &&
-      Number(result.service_confidence) >= 0.85 &&
-      supportedServiceKeys.length > 0 &&
       (facilityCounts.get(facilityKey(facility)) ?? 0) === 1 &&
       !hasTransitionOrStructuralHold(result)
-    )
+
+    if (!commonEligible) return false
+
+    if (bucket === 'missing_identity_corroboration_only') {
+      return (
+        !identityCorroborated &&
+        !previousBatch.startsWith('review-harvest-') &&
+        Number(result.service_confidence) >= 0.85 &&
+        supportedServiceKeys.length > 0
+      )
+    }
+
+    if (bucket === 'missing_service_evidence_only') {
+      return (
+        identityCorroborated &&
+        !previousBatch.startsWith('review-service-harvest-') &&
+        (Number(result.service_confidence) < 0.85 ||
+          supportedServiceKeys.length === 0)
+      )
+    }
+
+    return false
   })
   .sort(
     (a, b) =>
@@ -351,6 +371,10 @@ const candidates = eligibleCandidates
 const records = candidates.map(({ facility, result }) => {
   const raw = result.raw_result
   const supportedServiceKeys = evidenceSupportedServiceKeys(result)
+  const exportedServiceKeys =
+    bucket === 'missing_service_evidence_only'
+      ? result.service_keys ?? []
+      : supportedServiceKeys
 
   return {
     rin: facility.rin,
@@ -365,7 +389,7 @@ const records = candidates.map(({ facility, result }) => {
     servesExternalCustomers: result.serves_external_customers,
     currentName: result.current_name,
     currentAddress: result.current_address,
-    serviceKeys: supportedServiceKeys,
+    serviceKeys: exportedServiceKeys,
     serviceConfidence: Number(result.service_confidence),
     identityConfidence: Number(result.identity_confidence),
     evidenceUrl: rawString(raw, 'evidence_url'),
