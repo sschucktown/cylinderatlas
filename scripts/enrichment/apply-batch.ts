@@ -523,6 +523,18 @@ for (const record of payload.records) {
       evidenceBackedServiceKeys.length > 0,
   )
 
+  const priorStrongServiceKeys =
+    isServiceResolution &&
+    record.evidenceType &&
+    AUTO_PUBLISH_SERVICE_EVIDENCE_TYPES.has(record.evidenceType)
+      ? record.evidenceSupportsServiceKeys ?? []
+      : []
+
+  const combinedServiceKeys =
+    isServiceResolution && acceptedServiceResolutionEvidence
+      ? [...new Set([...priorStrongServiceKeys, ...evidenceBackedServiceKeys])]
+      : evidenceBackedServiceKeys
+
   // v2 can positively prove external-customer access, but the schema does not
   // separately prove the negative. Treat an unsupported yes OR any no as unknown
   // so absence of customer-access evidence cannot automatically exclude a facility.
@@ -567,7 +579,7 @@ for (const record of payload.records) {
     currentAddress: effectiveCurrentAddress,
     businessStatus: effectiveBusinessStatus,
     servesExternalCustomers: effectiveExternalCustomerStatus,
-    serviceKeys: hasStrongAutoPublishServiceEvidence ? evidenceBackedServiceKeys : [],
+    serviceKeys: hasStrongAutoPublishServiceEvidence ? combinedServiceKeys : [],
     identityCorroborated,
     evidenceUrls: [
       record.evidenceUrl,
