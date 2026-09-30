@@ -14,6 +14,7 @@ interface BatchRecord extends Omit<EvidenceInput, 'identityCorroborated' | 'evid
   serviceEvidenceUrl?: string | null
   serviceEvidenceType?: EvidenceType | null
   serviceEvidenceSupportsKeys?: EvidenceInput['serviceKeys']
+  serviceEvidenceDeterministicKeys?: EvidenceInput['serviceKeys']
   serviceEvidenceSummary?: string | null
   serviceSourceName?: string | null
   serviceSourceAddress?: string | null
@@ -373,6 +374,23 @@ function normalizeComparison(value: string | null | undefined) {
     .replace(/[^A-Z0-9]/g, '')
 }
 
+function addressUnit(value: string | null | undefined) {
+  const match = (value ?? '')
+    .toUpperCase()
+    .match(/\b(?:STE|SUITE|UNIT|#)\s*([A-Z0-9-]+)/)
+  return match?.[1] ?? null
+}
+
+function hasUnresolvedUnitMismatch(
+  candidate: FacilityCandidate,
+  currentAddress: string | null | undefined,
+) {
+  const phmsaUnit = addressUnit(candidate.phmsa_address)
+  if (!phmsaUnit) return false
+  const currentUnit = addressUnit(currentAddress)
+  return !currentUnit || currentUnit !== phmsaUnit
+}
+
 function hasUnresolvedIdentityLocationConflict(record: BatchRecord) {
   const text = [record.summary, record.corroborationSummary]
     .filter(Boolean)
@@ -430,6 +448,11 @@ function auditRisk(
   ) {
     score += 6
     reasons.push('current address may differ from PHMSA address')
+  }
+
+  if (hasUnresolvedUnitMismatch(candidate, result.currentAddress)) {
+    score += 12
+    reasons.push('PHMSA suite/unit is not reconciled')
   }
 
   const identityText = [
@@ -509,13 +532,20 @@ for (const record of payload.records) {
   const existingResult = existingResultsByFacility.get(facility.id)
   const existingIdentityCorroborated =
     existingResult?.raw_result?.identity_corroborated === true
+  const unresolvedUnitMismatch =
+    payload.reviewResolution === true &&
+    hasUnresolvedUnitMismatch(
+      candidate,
+      existingResult?.current_address ?? record.currentAddress,
+    )
 
   const identityCorroborated = isServiceResolution
     ? Boolean(
         existingIdentityCorroborated &&
           record.identityMatch === 'matched' &&
           record.identityConfidence >= 0.85 &&
-          !unresolvedIdentityLocationConflict,
+          !unresolvedIdentityLocationConflict &&
+          !unresolvedUnitMismatch,
       )
     : isHarvesterPayload
       ? Boolean(
@@ -550,11 +580,22 @@ for (const record of payload.records) {
   const serviceSpecificitySummary = isServiceResolution
     ? record.serviceEvidenceSummary ?? ''
     : record.summary ?? ''
+  const deterministicServiceKeys =
+    record.serviceEvidenceDeterministicKeys ?? []
+  const requiresDeterministicSourceText = new Set([
+    'medical-oxygen',
+    'co2-beverage',
+  ])
   const evidenceBackedServiceKeys = usesEvidenceSemanticsV2
     ? record.serviceKeys
         .filter((key) => effectiveServiceEvidenceSupportsKeys.includes(key))
         .filter((key) =>
           serviceKeySpecificitySupported(key, serviceSpecificitySummary),
+        )
+        .filter(
+          (key) =>
+            !requiresDeterministicSourceText.has(key) ||
+            deterministicServiceKeys.includes(key),
         )
     : record.serviceKeys
 
@@ -577,9 +618,15 @@ for (const record of payload.records) {
     isServiceResolution &&
     record.evidenceType &&
     AUTO_PUBLISH_SERVICE_EVIDENCE_TYPES.has(record.evidenceType)
-      ? (record.evidenceSupportsServiceKeys ?? []).filter((key) =>
-          serviceKeySpecificitySupported(key, record.summary ?? ''),
-        )
+      ? (record.evidenceSupportsServiceKeys ?? [])
+          .filter((key) =>
+            serviceKeySpecificitySupported(key, record.summary ?? ''),
+          )
+          .filter(
+            (key) =>
+              !requiresDeterministicSourceText.has(key) ||
+              deterministicServiceKeys.includes(key),
+          )
       : []
 
   const combinedServiceKeys =
@@ -732,6 +779,10 @@ for (const record of payload.records) {
             isServiceResolution && acceptedServiceResolutionEvidence
               ? effectiveServiceEvidenceSupportsKeys
               : existingResult?.raw_result?.service_evidence_supports_keys ?? null,
+          service_evidence_deterministic_keys:
+            isServiceResolution && acceptedServiceResolutionEvidence
+              ? deterministicServiceKeys
+              : existingResult?.raw_result?.service_evidence_deterministic_keys ?? null,
           service_evidence_summary:
             isServiceResolution && acceptedServiceResolutionEvidence
               ? record.serviceEvidenceSummary ?? null
