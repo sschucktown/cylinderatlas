@@ -190,7 +190,7 @@ function evidenceSupportedServiceKeys(row: EnrichmentRow) {
       }
 
       if (key === 'specialty') {
-        return /\baviation\b|\baircraft\b|\bmarine\b|\bspecialty cylinder/i.test(
+        return /\baviation\b|\baircraft\b|\bmarine\b/i.test(
           summary,
         )
       }
