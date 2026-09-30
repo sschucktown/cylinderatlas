@@ -45,7 +45,17 @@ const servicesResult = await $supabase
 
 if (servicesResult.error) throw servicesResult.error
 
+const publicSourcesResult = await $supabase
+  .from('facility_public_sources')
+  .select('purpose, source_type, url, label, verified_at')
+  .eq('facility_id', facility.id)
+  .order('purpose')
+  .order('verified_at', { ascending: false })
+
+if (publicSourcesResult.error) throw publicSourcesResult.error
+
 const services = servicesResult.data ?? []
+const publicSources = publicSourcesResult.data ?? []
 const name = displayName(facility)
 const currentPath = providerPath(facility)
 const verifiedDate = formatVerifiedDate(facility.verified_at)
@@ -240,6 +250,38 @@ useHead({
                 {{ verifiedDate || 'Verification date unavailable' }}
               </p>
             </div>
+          </div>
+
+          <div v-if="publicSources.length" class="mt-5 border-t border-slate-200 pt-5">
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Public sources</p>
+            <ul class="mt-3 space-y-3">
+              <li
+                v-for="source in publicSources"
+                :key="source.purpose + source.url"
+                class="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4"
+              >
+                <div>
+                  <a
+                    :href="source.url"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="text-sm font-semibold text-teal-800 hover:underline"
+                  >
+                    {{ source.label }}
+                  </a>
+                  <p class="mt-0.5 text-xs text-slate-500">
+                    {{ source.purpose === 'identity'
+                      ? 'Supports current business identity or facility location.'
+                      : source.purpose === 'service'
+                        ? 'Supports a published service category.'
+                        : 'Current provider website.' }}
+                  </p>
+                </div>
+                <span class="shrink-0 text-xs text-slate-400">
+                  Checked {{ formatVerifiedDate(source.verified_at) || 'recently' }}
+                </span>
+              </li>
+            </ul>
           </div>
 
           <p class="mt-5 border-t border-slate-200 pt-4 text-xs leading-5 text-slate-500">
