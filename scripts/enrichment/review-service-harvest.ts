@@ -1029,6 +1029,7 @@ function scheduleCheckpoint() {
   return checkpointChain
 }
 
+mainFlow: {
 await loadCheckpoint()
 
 if (refreshDeterministicOnly) {
@@ -1090,7 +1091,7 @@ if (refreshDeterministicOnly) {
       2,
     ),
   )
-  process.exit(0)
+  break mainFlow
 }
 
 const pendingRecords = input.records.filter(
@@ -1227,3 +1228,4 @@ console.log(
     2,
   ),
 )
+}
