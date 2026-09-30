@@ -331,6 +331,7 @@ function readPositiveFloatFlag(name: string, fallback: number) {
 }
 
 const maxProjectedCostUsd = readPositiveFloatFlag('max-projected-cost', 2)
+const retryUnresolved = process.argv.includes('--retry-unresolved')
 
 const MODEL_PRICING_USD_PER_MTOK: Record<
   string,
@@ -440,6 +441,13 @@ function buildPrompt(record: ReviewRecord) {
     'Verified current address: ' + (record.currentAddress ?? 'unknown'),
     'Previously extracted service hints: ' +
       (record.serviceKeys.length ? record.serviceKeys.join(', ') : 'none'),
+    'Existing primary evidence URL: ' + (record.evidenceUrl ?? 'none'),
+    'Existing primary evidence type: ' + (record.evidenceType ?? 'none'),
+    'Existing explicitly supported service keys: ' +
+      (record.evidenceSupportsServiceKeys.length
+        ? record.evidenceSupportsServiceKeys.join(', ')
+        : 'none'),
+    'Existing service confidence: ' + record.serviceConfidence.toFixed(2),
     'Existing evidence summary: ' + (record.summary || 'none'),
     '',
     'Identity, active-business status, and outside-customer access are already established. Do NOT reinterpret or change them. Research only which Cylinder Atlas service categories are explicitly supported for this exact facility/business.',
@@ -459,6 +467,8 @@ function buildPrompt(record: ReviewRecord) {
     '- Perform exactly ONE web search call. Use only sources returned by that search.',
     '- Anchor the search on the exact business name, PHMSA street address, city/state, and likely service term (for example hydrostatic testing, extinguisher, SCUBA, SCBA, propane, welding gas, medical oxygen, beverage CO2, paintball, aviation, or marine). Do not search by business name alone.',
     '- Prefer the provider/company website. A direct current government/regulatory source is also acceptable.',
+    '- If the existing primary evidence URL is first-party or regulatory and already appears to support one or more service hints, prioritize verifying that exact page/domain before looking elsewhere.',
+    '- Return ALL MVP service keys clearly supported by the selected source, not just the first matching category.',
     '- If you select a first-party website that is not already present in the existing evidence packet, the selected page must itself identify this exact facility address. Return that page’s business name and address in serviceSourceName/serviceSourceAddress.',
     '- Do NOT use BBB, Yelp, Yellow Pages, trade/member directories, chambers, social media, SEO directories, or generic directories to clear a service category.',
     '- A web result can NEVER be provider_claim.',
@@ -684,10 +694,16 @@ function mergeRecord(record: ReviewRecord, research: ServiceResearch) {
     )
   }
 
+  const researchResolved =
+    Boolean(research.serviceEvidenceUrl) &&
+    research.serviceEvidenceSupportsKeys.length > 0
+
   return {
     ...record,
-    serviceKeys: research.serviceKeys,
-    serviceConfidence: research.serviceConfidence,
+    serviceKeys: researchResolved ? research.serviceKeys : record.serviceKeys,
+    serviceConfidence: researchResolved
+      ? research.serviceConfidence
+      : record.serviceConfidence,
     serviceEvidenceUrl: research.serviceEvidenceUrl,
     serviceEvidenceType: research.serviceEvidenceType,
     serviceEvidenceSupportsKeys: research.serviceEvidenceSupportsKeys,
@@ -900,7 +916,22 @@ async function loadCheckpoint() {
     if (!sameBatch) return
 
     for (const record of existing.records ?? []) {
-      if (input.records.some((candidate) => candidate.rin === record.rin)) {
+      if (!input.records.some((candidate) => candidate.rin === record.rin)) {
+        continue
+      }
+
+      const resolved =
+        Boolean(record.serviceEvidenceUrl) &&
+        Boolean(
+          record.serviceEvidenceType &&
+            SERVICE_EVIDENCE_TYPES.has(
+              record.serviceEvidenceType as ServiceEvidenceType,
+            ),
+        ) &&
+        (record.serviceEvidenceSupportsKeys?.length ?? 0) > 0 &&
+        record.serviceConfidence >= 0.85
+
+      if (!retryUnresolved || resolved) {
         recordByRin.set(record.rin, record)
       }
     }
@@ -1040,6 +1071,7 @@ console.log(
       output: outputPath,
       records: input.records.length,
       resumed: resumedCount,
+      retryUnresolved,
       harvested: recordByRin.size,
       serviceResolved,
       unresolved: recordByRin.size - serviceResolved,
