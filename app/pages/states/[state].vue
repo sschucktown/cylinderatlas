@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import {
   codeFromStateSlug,
+  displayName,
+  providerPath,
   serviceLabel,
   stateName,
   statePath,
@@ -78,6 +80,27 @@ useSeoMeta({
 
 useHead({
   link: [{ rel: 'canonical', href: canonicalUrl(statePath(stateCode)) }],
+  script: [
+    {
+      type: 'application/ld+json',
+      textContent: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'CollectionPage',
+        name: 'Cylinder requalification providers in ' + name,
+        url: canonicalUrl(statePath(stateCode)),
+        mainEntity: {
+          '@type': 'ItemList',
+          numberOfItems: facilities.length,
+          itemListElement: facilities.slice(0, 100).map((facility, index) => ({
+            '@type': 'ListItem',
+            position: index + 1,
+            name: displayName(facility),
+            url: canonicalUrl(providerPath(facility)),
+          })),
+        },
+      }),
+    },
+  ],
 })
 </script>
 
