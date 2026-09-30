@@ -134,6 +134,40 @@ function serviceSourceMatchesFacility(
   )
 }
 
+function serviceKeySpecificitySupported(
+  key: string,
+  summary: string,
+) {
+  if (key === 'fire-extinguisher-suppression') {
+    return /\bfire\b.{0,50}\b(?:extinguisher|suppression)\b|\b(?:extinguisher|suppression)\b.{0,50}\bfire\b/i.test(
+      summary,
+    )
+  }
+  if (key === 'scuba') return /\bscuba\b|\bdive\b|\bdiving\b/i.test(summary)
+  if (key === 'scba') {
+    return /\bscba\b|self[-\s]?contained breathing apparatus/i.test(summary)
+  }
+  if (key === 'propane') return /\bpropane\b|\blpg\b/i.test(summary)
+  if (key === 'industrial-welding-gas') {
+    return /\bindustrial gas(?:es)?\b|\bwelding gas(?:es)?\b|\bargon\b|\bacetylene\b|\bwelding oxygen\b/i.test(
+      summary,
+    )
+  }
+  if (key === 'medical-oxygen') {
+    return /\bmedical(?:[-\s]+grade)?[-\s]+(?:oxygen|gas(?:es)?)\b|\bhealthcare\b|\bhospital\b|\bpatient\b/i.test(
+      summary,
+    )
+  }
+  if (key === 'co2-beverage') {
+    return /\bbeverage\b|\bsoda\b|\bdraft\b|\bkeg\b|\brestaurant\b|\bfood[-\s]?service\b/i.test(
+      summary,
+    )
+  }
+  if (key === 'paintball') return /\bpaintball\b/i.test(summary)
+  if (key === 'specialty') return /\baviation\b|\baircraft\b|\bmarine\b/i.test(summary)
+  return false
+}
+
 function reviewServiceEvidenceSourceIsValid(
   candidate: FacilityCandidate,
   record: BatchRecord,
@@ -502,10 +536,15 @@ for (const record of payload.records) {
       : []
     : record.evidenceSupportsServiceKeys ?? []
 
+  const serviceSpecificitySummary = isServiceResolution
+    ? record.serviceEvidenceSummary ?? ''
+    : record.summary ?? ''
   const evidenceBackedServiceKeys = usesEvidenceSemanticsV2
-    ? record.serviceKeys.filter((key) =>
-        effectiveServiceEvidenceSupportsKeys.includes(key),
-      )
+    ? record.serviceKeys
+        .filter((key) => effectiveServiceEvidenceSupportsKeys.includes(key))
+        .filter((key) =>
+          serviceKeySpecificitySupported(key, serviceSpecificitySummary),
+        )
     : record.serviceKeys
 
   const hasStrongAutoPublishServiceEvidence = Boolean(
@@ -527,7 +566,9 @@ for (const record of payload.records) {
     isServiceResolution &&
     record.evidenceType &&
     AUTO_PUBLISH_SERVICE_EVIDENCE_TYPES.has(record.evidenceType)
-      ? record.evidenceSupportsServiceKeys ?? []
+      ? (record.evidenceSupportsServiceKeys ?? []).filter((key) =>
+          serviceKeySpecificitySupported(key, record.summary ?? ''),
+        )
       : []
 
   const combinedServiceKeys =
