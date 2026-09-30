@@ -430,6 +430,47 @@ export type Database = {
           },
         ]
       }
+      facility_public_sources: {
+        Row: {
+          created_at: string
+          facility_id: string
+          id: string
+          label: string
+          purpose: Database["public"]["Enums"]["public_source_purpose_enum"]
+          source_type: Database["public"]["Enums"]["evidence_type_enum"]
+          url: string
+          verified_at: string
+        }
+        Insert: {
+          created_at?: string
+          facility_id: string
+          id?: string
+          label: string
+          purpose: Database["public"]["Enums"]["public_source_purpose_enum"]
+          source_type: Database["public"]["Enums"]["evidence_type_enum"]
+          url: string
+          verified_at: string
+        }
+        Update: {
+          created_at?: string
+          facility_id?: string
+          id?: string
+          label?: string
+          purpose?: Database["public"]["Enums"]["public_source_purpose_enum"]
+          source_type?: Database["public"]["Enums"]["evidence_type_enum"]
+          url?: string
+          verified_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "facility_public_sources_facility_id_fkey"
+            columns: ["facility_id"]
+            isOneToOne: false
+            referencedRelation: "facilities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       source_records: {
         Row: {
           captured_at: string
@@ -528,6 +569,7 @@ export type Database = {
         | "other"
       external_customer_status_enum: "yes" | "no" | "unknown"
       identity_match_enum: "matched" | "changed" | "conflict" | "unknown"
+      public_source_purpose_enum: "identity" | "service" | "provider_website"
       publish_status_enum: "publish" | "review" | "exclude"
       service_status_enum:
         | "verified"
@@ -688,6 +730,7 @@ export const Constants = {
       ],
       external_customer_status_enum: ["yes", "no", "unknown"],
       identity_match_enum: ["matched", "changed", "conflict", "unknown"],
+      public_source_purpose_enum: ["identity", "service", "provider_website"],
       publish_status_enum: ["publish", "review", "exclude"],
       service_status_enum: [
         "verified",
