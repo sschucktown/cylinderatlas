@@ -39,6 +39,9 @@ interface ReviewRecord {
   serviceEvidenceType?: EvidenceType | null
   serviceEvidenceSupportsKeys?: ServiceKey[]
   serviceEvidenceSummary?: string | null
+  serviceEvidenceValidationReason?: string | null
+  serviceEvidenceRejectedUrl?: string | null
+  serviceEvidenceRejectedType?: EvidenceType | null
   corroborationEvidenceUrl: string | null
   corroborationEvidenceType: EvidenceType | null
   corroborationSupports: CorroborationSupport[]
@@ -63,6 +66,9 @@ interface ServiceResearch {
   serviceEvidenceType: ServiceEvidenceType | null
   serviceEvidenceSupportsKeys: ServiceKey[]
   serviceEvidenceSummary: string | null
+  serviceEvidenceValidationReason: string | null
+  serviceEvidenceRejectedUrl: string | null
+  serviceEvidenceRejectedType: EvidenceType | null
 }
 
 interface HarvestFailure {
@@ -510,15 +516,28 @@ function sanitizeResearch(
       ? raw.serviceEvidenceSummary
       : ''
 
+  const sourceConsulted = Boolean(url && sourceWasConsulted(url, consulted))
+  const sourceBlocked = Boolean(url && isBlockedDirectoryUrl(url))
+  const sourceTypeValid = Boolean(
+    url && type && sourceTypeMatchesUrl(record, type, url),
+  )
   const validSource = Boolean(
-    url &&
-      type &&
-      sourceWasConsulted(url, consulted) &&
-      !isBlockedDirectoryUrl(url) &&
-      sourceTypeMatchesUrl(record, type, url),
+    url && type && sourceConsulted && !sourceBlocked && sourceTypeValid,
   )
 
   if (!validSource) {
+    const reason = !url
+      ? 'model_returned_no_url'
+      : !type
+        ? 'model_returned_invalid_type'
+        : !sourceConsulted
+          ? 'selected_url_not_in_consulted_sources'
+          : sourceBlocked
+            ? 'blocked_directory_source'
+            : !sourceTypeValid
+              ? 'source_type_or_provider_domain_mismatch'
+              : 'unknown_source_validation_failure'
+
     return {
       serviceKeys: [],
       serviceConfidence: 0,
@@ -526,6 +545,9 @@ function sanitizeResearch(
       serviceEvidenceType: null,
       serviceEvidenceSupportsKeys: [],
       serviceEvidenceSummary: null,
+      serviceEvidenceValidationReason: reason,
+      serviceEvidenceRejectedUrl: url,
+      serviceEvidenceRejectedType: type,
     }
   }
 
@@ -547,6 +569,9 @@ function sanitizeResearch(
       serviceEvidenceType: type,
       serviceEvidenceSupportsKeys: [],
       serviceEvidenceSummary: summary || null,
+      serviceEvidenceValidationReason: 'no_supported_taxonomy_keys',
+      serviceEvidenceRejectedUrl: null,
+      serviceEvidenceRejectedType: null,
     }
   }
 
@@ -557,6 +582,9 @@ function sanitizeResearch(
     serviceEvidenceType: type,
     serviceEvidenceSupportsKeys: supported,
     serviceEvidenceSummary: summary || null,
+    serviceEvidenceValidationReason: null,
+    serviceEvidenceRejectedUrl: null,
+    serviceEvidenceRejectedType: null,
   }
 }
 
@@ -576,6 +604,9 @@ function mergeRecord(record: ReviewRecord, research: ServiceResearch) {
     serviceEvidenceType: research.serviceEvidenceType,
     serviceEvidenceSupportsKeys: research.serviceEvidenceSupportsKeys,
     serviceEvidenceSummary: research.serviceEvidenceSummary,
+    serviceEvidenceValidationReason: research.serviceEvidenceValidationReason,
+    serviceEvidenceRejectedUrl: research.serviceEvidenceRejectedUrl,
+    serviceEvidenceRejectedType: research.serviceEvidenceRejectedType,
     summary: summaryParts.filter(Boolean).join(' '),
   } satisfies ReviewRecord
 }
