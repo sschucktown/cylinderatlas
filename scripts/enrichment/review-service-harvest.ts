@@ -1175,7 +1175,8 @@ if (
       2,
     ),
   )
-  process.exit(2)
+  process.exitCode = 2
+  break mainFlow
 }
 
 await harvestRecords(remainingRecords)
