@@ -38,6 +38,7 @@ interface ReviewRecord {
   serviceEvidenceUrl?: string | null
   serviceEvidenceType?: EvidenceType | null
   serviceEvidenceSupportsKeys?: ServiceKey[]
+  serviceEvidenceDeterministicKeys?: ServiceKey[]
   serviceEvidenceSummary?: string | null
   serviceSourceName?: string | null
   serviceSourceAddress?: string | null
@@ -67,6 +68,7 @@ interface ServiceResearch {
   serviceEvidenceUrl: string | null
   serviceEvidenceType: ServiceEvidenceType | null
   serviceEvidenceSupportsKeys: ServiceKey[]
+  serviceEvidenceDeterministicKeys: ServiceKey[]
   serviceEvidenceSummary: string | null
   serviceSourceName: string | null
   serviceSourceAddress: string | null
@@ -647,6 +649,7 @@ function sanitizeResearch(
       serviceEvidenceUrl: null,
       serviceEvidenceType: null,
       serviceEvidenceSupportsKeys: [],
+      serviceEvidenceDeterministicKeys: [],
       serviceEvidenceSummary: summary || null,
       serviceSourceName: sourceName,
       serviceSourceAddress: sourceAddress,
@@ -673,6 +676,7 @@ function sanitizeResearch(
       serviceEvidenceUrl: url,
       serviceEvidenceType: type,
       serviceEvidenceSupportsKeys: [],
+      serviceEvidenceDeterministicKeys: [],
       serviceEvidenceSummary: summary || null,
       serviceSourceName: sourceName,
       serviceSourceAddress: sourceAddress,
@@ -688,6 +692,7 @@ function sanitizeResearch(
     serviceEvidenceUrl: url,
     serviceEvidenceType: type,
     serviceEvidenceSupportsKeys: supported,
+    serviceEvidenceDeterministicKeys: [],
     serviceEvidenceSummary: summary || null,
     serviceSourceName: sourceName,
     serviceSourceAddress: sourceAddress,
@@ -718,6 +723,8 @@ function mergeRecord(record: ReviewRecord, research: ServiceResearch) {
     serviceEvidenceUrl: research.serviceEvidenceUrl,
     serviceEvidenceType: research.serviceEvidenceType,
     serviceEvidenceSupportsKeys: research.serviceEvidenceSupportsKeys,
+    serviceEvidenceDeterministicKeys:
+      research.serviceEvidenceDeterministicKeys,
     serviceEvidenceSummary: research.serviceEvidenceSummary,
     serviceSourceName: research.serviceSourceName,
     serviceSourceAddress: research.serviceSourceAddress,
@@ -782,6 +789,57 @@ async function waitForRequestSlot() {
     nextRequestAt = Date.now() + minRequestIntervalMs
   })
   await requestGate
+}
+
+function htmlToVisibleText(html: string) {
+  return html
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;|&#160;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+async function attachDeterministicServiceKeys(research: ServiceResearch) {
+  if (
+    research.serviceEvidenceType !== 'first_party' ||
+    !research.serviceEvidenceUrl ||
+    !research.serviceEvidenceSupportsKeys.length
+  ) {
+    return research
+  }
+
+  try {
+    const response = await fetch(research.serviceEvidenceUrl, {
+      redirect: 'follow',
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (compatible; CylinderAtlasEvidenceBot/1.0)',
+        Accept: 'text/html,application/xhtml+xml',
+      },
+      signal: AbortSignal.timeout(10_000),
+    })
+
+    const contentType = response.headers.get('content-type') ?? ''
+    if (!response.ok || !contentType.toLowerCase().includes('text/html')) {
+      return research
+    }
+
+    const text = htmlToVisibleText(await response.text())
+    return {
+      ...research,
+      serviceEvidenceDeterministicKeys:
+        research.serviceEvidenceSupportsKeys.filter((key) =>
+          highSpecificitySupported(key, text),
+        ),
+    }
+  } catch {
+    return research
+  }
 }
 
 async function researchRecord(record: ReviewRecord) {
@@ -849,7 +907,8 @@ async function researchRecord(record: ReviewRecord) {
 
       const raw = JSON.parse(extractOutputText(body)) as Record<string, unknown>
       const consulted = extractSearchSources(body)
-      return sanitizeResearch(record, raw, consulted)
+      const sanitized = sanitizeResearch(record, raw, consulted)
+      return await attachDeterministicServiceKeys(sanitized)
     } catch (error) {
       lastError = error
       if (successfulResponseReceived) break
