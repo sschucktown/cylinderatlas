@@ -154,12 +154,12 @@ function serviceKeySpecificitySupported(
     )
   }
   if (key === 'medical-oxygen') {
-    return /\bmedical(?:[-\s]+grade)?[-\s]+(?:oxygen|gas(?:es)?)\b|\bhealthcare\b|\bhospital\b|\bpatient\b/i.test(
+    return /\bmedical(?:[-\s]+grade)?[-\s]+(?:oxygen|gas(?:es)?)\b|\b(?:oxygen|gas(?:es)?)\b.{0,50}\b(?:medical|healthcare|hospital|patient)\b|\b(?:medical|healthcare|hospital|patient)\b.{0,50}\b(?:oxygen|gas(?:es)?)\b/i.test(
       summary,
     )
   }
   if (key === 'co2-beverage') {
-    return /\bbeverage\b|\bsoda\b|\bdraft\b|\bkeg\b|\brestaurant\b|\bfood[-\s]?service\b/i.test(
+    return /\bco2\b.{0,60}\b(?:beverage|soda|draft|keg|restaurant|food[-\s]?service)\b|\b(?:beverage|soda|draft|keg|restaurant|food[-\s]?service)\b.{0,60}\bco2\b/i.test(
       summary,
     )
   }
