@@ -345,6 +345,9 @@ function readPositiveFloatFlag(name: string, fallback: number) {
 
 const maxProjectedCostUsd = readPositiveFloatFlag('max-projected-cost', 2)
 const retryUnresolved = process.argv.includes('--retry-unresolved')
+const refreshDeterministicOnly = process.argv.includes(
+  '--refresh-deterministic-only',
+)
 
 const MODEL_PRICING_USD_PER_MTOK: Record<
   string,
@@ -356,7 +359,7 @@ const MODEL_PRICING_USD_PER_MTOK: Record<
 }
 const WEB_SEARCH_USD_PER_CALL = 0.01
 
-if (!apiKey) {
+if (!apiKey && !refreshDeterministicOnly) {
   throw new Error(
     'Missing OPENAI_API_KEY. It is required for targeted service-evidence research.',
   )
@@ -1027,6 +1030,68 @@ function scheduleCheckpoint() {
 }
 
 await loadCheckpoint()
+
+if (refreshDeterministicOnly) {
+  const refreshed: ReviewRecord[] = []
+
+  for (const inputRecord of input.records) {
+    const record = recordByRin.get(inputRecord.rin) ?? inputRecord
+    const type = isServiceEvidenceType(record.serviceEvidenceType)
+      ? record.serviceEvidenceType
+      : null
+
+    const research: ServiceResearch = {
+      serviceKeys: record.serviceKeys,
+      serviceConfidence: record.serviceConfidence,
+      serviceEvidenceUrl: record.serviceEvidenceUrl ?? null,
+      serviceEvidenceType: type,
+      serviceEvidenceSupportsKeys: record.serviceEvidenceSupportsKeys ?? [],
+      serviceEvidenceDeterministicKeys: [],
+      serviceEvidenceSummary: record.serviceEvidenceSummary ?? null,
+      serviceSourceName: record.serviceSourceName ?? null,
+      serviceSourceAddress: record.serviceSourceAddress ?? null,
+      serviceEvidenceValidationReason:
+        record.serviceEvidenceValidationReason ?? null,
+      serviceEvidenceRejectedUrl: record.serviceEvidenceRejectedUrl ?? null,
+      serviceEvidenceRejectedType:
+        record.serviceEvidenceRejectedType ?? null,
+    }
+
+    const verified = await attachDeterministicServiceKeys(research)
+    const updated: ReviewRecord = {
+      ...record,
+      serviceEvidenceDeterministicKeys:
+        verified.serviceEvidenceDeterministicKeys,
+    }
+    recordByRin.set(updated.rin, updated)
+    refreshed.push(updated)
+  }
+
+  failureByRin.clear()
+  await writeJsonAtomic(outputPath, createPayload(true))
+
+  console.log(
+    JSON.stringify(
+      {
+        run: input.runName,
+        batch,
+        output: outputPath,
+        records: refreshed.length,
+        refreshDeterministicOnly: true,
+        firstPartyVerified: refreshed.filter(
+          (record) =>
+            record.serviceEvidenceType === 'first_party' &&
+            (record.serviceEvidenceDeterministicKeys?.length ?? 0) > 0,
+        ).length,
+        openAiCalls: 0,
+        webSearchCalls: 0,
+      },
+      null,
+      2,
+    ),
+  )
+  process.exit(0)
+}
 
 const pendingRecords = input.records.filter(
   (record) => !recordByRin.has(record.rin),
