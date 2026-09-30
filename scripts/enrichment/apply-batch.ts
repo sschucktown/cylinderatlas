@@ -257,6 +257,10 @@ const existingResultsByFacility = new Map<
   {
     current_name: string | null
     current_address: string | null
+    service_keys: string[]
+    service_confidence: number
+    evidence_summary: string | null
+    manual_review_reason: string | null
     raw_result: Record<string, unknown> | null
   }
 >()
@@ -265,7 +269,7 @@ if (payload.reviewResolution) {
   const facilityIds = (facilities ?? []).map((facility) => facility.id)
   const { data: existingResults, error: existingResultsError } = await supabase
     .from('facility_enrichment_results')
-    .select('facility_id, current_name, current_address, raw_result')
+    .select('facility_id, current_name, current_address, service_keys, service_confidence, evidence_summary, manual_review_reason, raw_result')
     .eq('run_id', run.id)
     .in('facility_id', facilityIds)
 
@@ -275,6 +279,10 @@ if (payload.reviewResolution) {
     existingResultsByFacility.set(row.facility_id, {
       current_name: row.current_name,
       current_address: row.current_address,
+      service_keys: row.service_keys ?? [],
+      service_confidence: Number(row.service_confidence),
+      evidence_summary: row.evidence_summary ?? null,
+      manual_review_reason: row.manual_review_reason ?? null,
       raw_result: row.raw_result as Record<string, unknown> | null,
     })
   }
@@ -509,6 +517,12 @@ for (const record of payload.records) {
         )),
   )
 
+  const acceptedServiceResolutionEvidence = Boolean(
+    isServiceResolution &&
+      hasStrongAutoPublishServiceEvidence &&
+      evidenceBackedServiceKeys.length > 0,
+  )
+
   // v2 can positively prove external-customer access, but the schema does not
   // separately prove the negative. Treat an unsupported yes OR any no as unknown
   // so absence of customer-access evidence cannot automatically exclude a facility.
@@ -562,6 +576,23 @@ for (const record of payload.records) {
     ].filter((url): url is string => Boolean(url)),
   })
 
+  const persistedServiceKeys =
+    isServiceResolution && !acceptedServiceResolutionEvidence
+      ? existingResult?.service_keys ?? []
+      : result.serviceKeys
+  const persistedServiceConfidence =
+    isServiceResolution && !acceptedServiceResolutionEvidence
+      ? existingResult?.service_confidence ?? result.serviceConfidence
+      : result.serviceConfidence
+  const persistedEvidenceSummary =
+    isServiceResolution && !acceptedServiceResolutionEvidence
+      ? existingResult?.evidence_summary ?? result.summary
+      : result.summary
+  const persistedManualReviewReason =
+    isServiceResolution && !acceptedServiceResolutionEvidence
+      ? existingResult?.manual_review_reason ?? result.manualReviewReason ?? null
+      : result.manualReviewReason ?? null
+
   applied.push({ rin: facility.rin, decision: result.decision })
 
   if (dryRun) {
@@ -570,8 +601,8 @@ for (const record of payload.records) {
       decision: result.decision,
       identityCorroborated,
       identityConfidence: result.identityConfidence,
-      serviceConfidence: result.serviceConfidence,
-      serviceKeys: result.serviceKeys,
+      serviceConfidence: persistedServiceConfidence,
+      serviceKeys: persistedServiceKeys,
       evidenceUrl: record.evidenceUrl ?? null,
       evidenceType: record.evidenceType ?? null,
       corroborationEvidenceUrl: effectiveCorroborationEvidenceUrl,
@@ -586,7 +617,7 @@ for (const record of payload.records) {
         const risk = auditRisk(candidate, record, result)
         return { auditRisk: risk.score, auditReasons: risk.reasons }
       })(),
-      manualReviewReason: result.manualReviewReason ?? null,
+      manualReviewReason: persistedManualReviewReason,
     })
     continue
   }
@@ -601,33 +632,54 @@ for (const record of payload.records) {
         business_status: record.businessStatus,
         serves_external_customers: effectiveExternalCustomerStatus,
         identity_confidence: result.identityConfidence,
-        service_confidence: result.serviceConfidence,
+        service_confidence: persistedServiceConfidence,
         decision: result.decision,
-        service_keys: result.serviceKeys,
+        service_keys: persistedServiceKeys,
         current_name: result.currentName ?? null,
         current_address: result.currentAddress ?? null,
-        manual_review_reason: result.manualReviewReason ?? null,
-        evidence_summary: result.summary,
+        manual_review_reason: persistedManualReviewReason,
+        evidence_summary: persistedEvidenceSummary,
         raw_result: {
-          batch: payload.batch,
+          ...(existingResult?.raw_result ?? {}),
+          batch: isServiceResolution
+            ? existingResult?.raw_result?.batch ?? payload.batch
+            : payload.batch,
+          service_review_batch: isServiceResolution
+            ? payload.batch
+            : existingResult?.raw_result?.service_review_batch ?? null,
+          service_review_attempted_at: isServiceResolution
+            ? new Date().toISOString()
+            : existingResult?.raw_result?.service_review_attempted_at ?? null,
           evidence_url: record.evidenceUrl ?? null,
           evidence_type: record.evidenceType ?? null,
           identity_corroborated: identityCorroborated,
           evidence_semantics_version: payload.evidenceSemanticsVersion ?? null,
           evidence_supports_service_keys: record.evidenceSupportsServiceKeys ?? null,
           evidence_supports_external_customers: record.evidenceSupportsExternalCustomers ?? null,
-          service_evidence_url: isServiceResolution
-            ? effectiveServiceEvidenceUrl
-            : existingResult?.raw_result?.service_evidence_url ?? null,
-          service_evidence_type: isServiceResolution
-            ? effectiveServiceEvidenceType
-            : existingResult?.raw_result?.service_evidence_type ?? null,
-          service_evidence_supports_keys: isServiceResolution
-            ? effectiveServiceEvidenceSupportsKeys
-            : existingResult?.raw_result?.service_evidence_supports_keys ?? null,
-          service_evidence_summary: isServiceResolution
-            ? record.serviceEvidenceSummary ?? null
-            : existingResult?.raw_result?.service_evidence_summary ?? null,
+          service_evidence_url:
+            isServiceResolution && acceptedServiceResolutionEvidence
+              ? effectiveServiceEvidenceUrl
+              : existingResult?.raw_result?.service_evidence_url ?? null,
+          service_evidence_type:
+            isServiceResolution && acceptedServiceResolutionEvidence
+              ? effectiveServiceEvidenceType
+              : existingResult?.raw_result?.service_evidence_type ?? null,
+          service_evidence_supports_keys:
+            isServiceResolution && acceptedServiceResolutionEvidence
+              ? effectiveServiceEvidenceSupportsKeys
+              : existingResult?.raw_result?.service_evidence_supports_keys ?? null,
+          service_evidence_summary:
+            isServiceResolution && acceptedServiceResolutionEvidence
+              ? record.serviceEvidenceSummary ?? null
+              : existingResult?.raw_result?.service_evidence_summary ?? null,
+          service_source_name:
+            isServiceResolution && acceptedServiceResolutionEvidence
+              ? record.serviceSourceName ?? null
+              : existingResult?.raw_result?.service_source_name ?? null,
+          service_source_address:
+            isServiceResolution && acceptedServiceResolutionEvidence
+              ? record.serviceSourceAddress ?? null
+              : existingResult?.raw_result?.service_source_address ?? null,
           corroboration_supports: effectiveCorroborationSupports,
           corroboration_evidence_url: effectiveCorroborationEvidenceUrl,
           corroboration_evidence_type: effectiveCorroborationEvidenceType,
@@ -765,7 +817,7 @@ for (const record of payload.records) {
         : result.decision === 'review'
           ? 'manual_review'
           : 'excluded',
-    manual_review_reason: result.manualReviewReason ?? null,
+    manual_review_reason: persistedManualReviewReason,
     enrichment_run_id: run.id,
     enrichment_version: run.algorithm_version,
     last_enriched_at: new Date().toISOString(),
