@@ -135,10 +135,21 @@ function evidenceSupportedServiceKeys(row: EnrichmentRow) {
     rawStringArray(raw, 'service_evidence_supports_keys') ??
     rawStringArray(raw, 'evidence_supports_service_keys') ??
     []
+  const deterministic =
+    rawStringArray(raw, 'service_evidence_deterministic_keys') ?? []
+  const requiresDeterministicSourceText = new Set([
+    'medical-oxygen',
+    'co2-beverage',
+  ])
   const summary = row.evidence_summary ?? ''
 
   return (row.service_keys ?? [])
     .filter((key) => supported.includes(key))
+    .filter(
+      (key) =>
+        !requiresDeterministicSourceText.has(key) ||
+        deterministic.includes(key),
+    )
     .filter((key) => {
       if (key === 'fire-extinguisher-suppression') {
         return /\bfire\b.{0,50}\b(?:extinguisher|suppression)\b|\b(?:extinguisher|suppression)\b.{0,50}\bfire\b/i.test(
