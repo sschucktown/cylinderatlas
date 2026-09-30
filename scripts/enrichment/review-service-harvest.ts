@@ -205,6 +205,16 @@ function normalizeFacilityText(value: string | null | undefined) {
     .replace(/[^A-Z0-9]/g, '')
 }
 
+function isIdentityOnlyServicePage(raw: string | null | undefined) {
+  if (!raw) return false
+  try {
+    const pathname = new URL(raw).pathname.toLowerCase()
+    return /\/(?:contact(?:-us)?|location|locations)\/?$/.test(pathname)
+  } catch {
+    return false
+  }
+}
+
 function sourceMatchesExactFacility(
   record: ReviewRecord,
   sourceAddress: string | null,
@@ -228,6 +238,7 @@ function sourceTypeMatchesUrl(
   sourceAddress: string | null,
 ) {
   if (type === 'regulatory') return isGovernmentUrl(url)
+  if (isIdentityOnlyServicePage(url)) return false
 
   const domain = siteDomain(url)
   const knownProviderDomain = Boolean(
