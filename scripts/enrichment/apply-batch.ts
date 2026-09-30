@@ -15,6 +15,8 @@ interface BatchRecord extends Omit<EvidenceInput, 'identityCorroborated' | 'evid
   serviceEvidenceType?: EvidenceType | null
   serviceEvidenceSupportsKeys?: EvidenceInput['serviceKeys']
   serviceEvidenceSummary?: string | null
+  serviceSourceName?: string | null
+  serviceSourceAddress?: string | null
   corroborationEvidenceUrl?: string | null
   corroborationEvidenceType?: EvidenceType | null
   corroborationSupports?: Array<'identity' | 'address' | 'business_status'>
@@ -71,6 +73,89 @@ function isPlausibleBusinessRegistry(raw: string | null | undefined) {
     TRUSTED_NON_GOV_REGISTRY_HOSTS.some((domain) =>
       hostnameMatches(hostname, domain),
     )
+  )
+}
+
+
+function normalizeFacilityText(value: string | null | undefined) {
+  return (value ?? '')
+    .toUpperCase()
+    .replace(/\bSTREET\b/g, 'ST')
+    .replace(/\bROAD\b/g, 'RD')
+    .replace(/\bAVENUE\b/g, 'AVE')
+    .replace(/\bLANE\b/g, 'LN')
+    .replace(/\bDRIVE\b/g, 'DR')
+    .replace(/\bBOULEVARD\b/g, 'BLVD')
+    .replace(/\bHIGHWAY\b/g, 'HWY')
+    .replace(/\bSUITE\b/g, 'STE')
+    .replace(/[^A-Z0-9]/g, '')
+}
+
+function domainLooksLikeBusiness(
+  rawUrl: string,
+  names: Array<string | null | undefined>,
+) {
+  const domain = siteDomain(rawUrl)
+  if (!domain) return false
+
+  const normalizedDomain = domain.replace(/[^a-z0-9]/g, '')
+  const tokens = names
+    .filter(Boolean)
+    .flatMap((value) =>
+      String(value)
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, ' ')
+        .split(/\s+/)
+        .filter(
+          (token) =>
+            token.length >= 5 &&
+            !['company', 'corporation', 'limited', 'incorporated', 'services'].includes(
+              token,
+            ),
+        ),
+    )
+
+  return tokens.some((token) => normalizedDomain.includes(token))
+}
+
+function serviceSourceMatchesFacility(
+  candidate: FacilityCandidate,
+  record: BatchRecord,
+) {
+  const source = normalizeFacilityText(record.serviceSourceAddress)
+  const phmsaStreet = normalizeFacilityText(candidate.phmsa_address)
+  const city = normalizeFacilityText(candidate.city)
+
+  return Boolean(
+    source &&
+      phmsaStreet &&
+      source.includes(phmsaStreet) &&
+      (!city || source.includes(city)),
+  )
+}
+
+function reviewServiceEvidenceSourceIsValid(
+  candidate: FacilityCandidate,
+  record: BatchRecord,
+) {
+  const url = record.serviceEvidenceUrl
+  const type = record.serviceEvidenceType
+  if (!url || !type) return false
+
+  if (type === 'regulatory') return isGovernmentUrl(url)
+  if (type !== 'first_party') return false
+
+  const primaryDomain =
+    record.evidenceType === 'first_party' ? siteDomain(record.evidenceUrl) : null
+  const serviceDomain = siteDomain(url)
+  const matchesKnownProviderDomain = Boolean(
+    primaryDomain && serviceDomain && primaryDomain === serviceDomain,
+  )
+
+  return Boolean(
+    matchesKnownProviderDomain ||
+      (domainLooksLikeBusiness(url, [record.currentName, candidate.phmsa_name]) &&
+        serviceSourceMatchesFacility(candidate, record)),
   )
 }
 
@@ -390,14 +475,23 @@ for (const record of payload.records) {
         )
       : strongPrimaryEvidence || strongCorroborationEvidence
 
+  const serviceResolutionEvidenceAccepted =
+    !isServiceResolution || reviewServiceEvidenceSourceIsValid(candidate, record)
+
   const effectiveServiceEvidenceUrl = isServiceResolution
-    ? record.serviceEvidenceUrl ?? null
+    ? serviceResolutionEvidenceAccepted
+      ? record.serviceEvidenceUrl ?? null
+      : null
     : record.evidenceUrl ?? null
   const effectiveServiceEvidenceType = isServiceResolution
-    ? record.serviceEvidenceType ?? null
+    ? serviceResolutionEvidenceAccepted
+      ? record.serviceEvidenceType ?? null
+      : null
     : record.evidenceType ?? null
   const effectiveServiceEvidenceSupportsKeys = isServiceResolution
-    ? record.serviceEvidenceSupportsKeys ?? []
+    ? serviceResolutionEvidenceAccepted
+      ? record.serviceEvidenceSupportsKeys ?? []
+      : []
     : record.evidenceSupportsServiceKeys ?? []
 
   const evidenceBackedServiceKeys = usesEvidenceSemanticsV2
