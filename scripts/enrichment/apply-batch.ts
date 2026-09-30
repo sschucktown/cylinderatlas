@@ -118,6 +118,16 @@ function domainLooksLikeBusiness(
   return tokens.some((token) => normalizedDomain.includes(token))
 }
 
+function isIdentityOnlyServicePage(raw: string | null | undefined) {
+  if (!raw) return false
+  try {
+    const pathname = new URL(raw).pathname.toLowerCase()
+    return /\/(?:contact(?:-us)?|location|locations)\/?$/.test(pathname)
+  } catch {
+    return false
+  }
+}
+
 function serviceSourceMatchesFacility(
   candidate: FacilityCandidate,
   record: BatchRecord,
@@ -178,6 +188,7 @@ function reviewServiceEvidenceSourceIsValid(
 
   if (type === 'regulatory') return isGovernmentUrl(url)
   if (type !== 'first_party') return false
+  if (isIdentityOnlyServicePage(url)) return false
 
   const primaryDomain =
     record.evidenceType === 'first_party' ? siteDomain(record.evidenceUrl) : null
