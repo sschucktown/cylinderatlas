@@ -140,28 +140,62 @@ function evidenceSupportedServiceKeys(row: EnrichmentRow) {
   return (row.service_keys ?? [])
     .filter((key) => supported.includes(key))
     .filter((key) => {
+      if (key === 'fire-extinguisher-suppression') {
+        return /\bfire\b.{0,50}\b(?:extinguisher|suppression)\b|\b(?:extinguisher|suppression)\b.{0,50}\bfire\b/i.test(
+          summary,
+        )
+      }
+
+      if (key === 'scuba') {
+        return /\bscuba\b|\bdive\b|\bdiving\b/i.test(summary)
+      }
+
+      if (key === 'scba') {
+        return /\bscba\b|self[-\s]?contained breathing apparatus/i.test(summary)
+      }
+
+      if (key === 'propane') {
+        return /\bpropane\b|\blpg\b/i.test(summary)
+      }
+
+      if (key === 'industrial-welding-gas') {
+        return /\bindustrial gas(?:es)?\b|\bwelding gas(?:es)?\b|\bargon\b|\bacetylene\b|\bwelding oxygen\b/i.test(
+          summary,
+        )
+      }
+
       if (key === 'medical-oxygen') {
         const explicitlyUnsupported =
-          /medical[-\\s]?oxygen.{0,100}(?:not sufficiently supported|not explicitly established|not established|does not establish|insufficient)/i.test(
+          /medical[-\s]?oxygen.{0,100}(?:not sufficiently supported|not explicitly established|not established|does not establish|insufficient)/i.test(
             summary,
           ) ||
-          /(?:not sufficiently supported|not explicitly established|not established|does not establish|insufficient).{0,100}medical[-\\s]?oxygen/i.test(
+          /(?:not sufficiently supported|not explicitly established|not established|does not establish|insufficient).{0,100}medical[-\s]?oxygen/i.test(
             summary,
           )
         if (explicitlyUnsupported) return false
 
-        return /\\bmedical(?:[-\\s]+grade)?[-\\s]+(?:oxygen|gas(?:es)?)\\b|\\bhealthcare\\b|\\bhospital\\b|\\bpatient\\b/i.test(
+        return /\bmedical(?:[-\s]+grade)?[-\s]+(?:oxygen|gas(?:es)?)\b|\bhealthcare\b|\bhospital\b|\bpatient\b/i.test(
           summary,
         )
       }
 
       if (key === 'co2-beverage') {
-        return /\\bbeverage\\b|\\bsoda\\b|\\bdraft\\b|\\bkeg\\b|\\brestaurant\\b|\\bfood[-\\s]?service\\b/i.test(
+        return /\bbeverage\b|\bsoda\b|\bdraft\b|\bkeg\b|\brestaurant\b|\bfood[-\s]?service\b/i.test(
           summary,
         )
       }
 
-      return true
+      if (key === 'paintball') {
+        return /\bpaintball\b/i.test(summary)
+      }
+
+      if (key === 'specialty') {
+        return /\baviation\b|\baircraft\b|\bmarine\b|\bspecialty cylinder/i.test(
+          summary,
+        )
+      }
+
+      return false
     })
 }
 
