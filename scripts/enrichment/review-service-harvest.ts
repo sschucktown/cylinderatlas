@@ -39,6 +39,8 @@ interface ReviewRecord {
   serviceEvidenceType?: EvidenceType | null
   serviceEvidenceSupportsKeys?: ServiceKey[]
   serviceEvidenceSummary?: string | null
+  serviceSourceName?: string | null
+  serviceSourceAddress?: string | null
   serviceEvidenceValidationReason?: string | null
   serviceEvidenceRejectedUrl?: string | null
   serviceEvidenceRejectedType?: EvidenceType | null
@@ -66,6 +68,8 @@ interface ServiceResearch {
   serviceEvidenceType: ServiceEvidenceType | null
   serviceEvidenceSupportsKeys: ServiceKey[]
   serviceEvidenceSummary: string | null
+  serviceSourceName: string | null
+  serviceSourceAddress: string | null
   serviceEvidenceValidationReason: string | null
   serviceEvidenceRejectedUrl: string | null
   serviceEvidenceRejectedType: EvidenceType | null
@@ -187,14 +191,56 @@ function providerDomains(record: ReviewRecord) {
   return domains
 }
 
+function normalizeFacilityText(value: string | null | undefined) {
+  return (value ?? '')
+    .toUpperCase()
+    .replace(/\bSTREET\b/g, 'ST')
+    .replace(/\bROAD\b/g, 'RD')
+    .replace(/\bAVENUE\b/g, 'AVE')
+    .replace(/\bLANE\b/g, 'LN')
+    .replace(/\bDRIVE\b/g, 'DR')
+    .replace(/\bBOULEVARD\b/g, 'BLVD')
+    .replace(/\bHIGHWAY\b/g, 'HWY')
+    .replace(/\bSUITE\b/g, 'STE')
+    .replace(/[^A-Z0-9]/g, '')
+}
+
+function sourceMatchesExactFacility(
+  record: ReviewRecord,
+  sourceAddress: string | null,
+) {
+  const source = normalizeFacilityText(sourceAddress)
+  const phmsaStreet = normalizeFacilityText(record.phmsaAddress)
+  const city = normalizeFacilityText(record.city)
+
+  return Boolean(
+    source &&
+      phmsaStreet &&
+      source.includes(phmsaStreet) &&
+      (!city || source.includes(city)),
+  )
+}
+
 function sourceTypeMatchesUrl(
   record: ReviewRecord,
   type: ServiceEvidenceType,
   url: string,
+  sourceAddress: string | null,
 ) {
   if (type === 'regulatory') return isGovernmentUrl(url)
+
   const domain = siteDomain(url)
-  return Boolean(domain && providerDomains(record).has(domain))
+  const knownProviderDomain = Boolean(
+    domain && providerDomains(record).has(domain),
+  )
+
+  // A first-party domain may be newly discovered during service research only
+  // when that same source explicitly identifies the exact already-verified RIN
+  // facility. This prevents same-name businesses in other cities from clearing.
+  return Boolean(
+    domain &&
+      (knownProviderDomain || sourceMatchesExactFacility(record, sourceAddress)),
+  )
 }
 
 const serviceSchema = {
@@ -215,6 +261,8 @@ const serviceSchema = {
       items: { type: 'string', enum: SERVICE_KEYS },
     },
     serviceEvidenceSummary: { type: ['string', 'null'] },
+    serviceSourceName: { type: ['string', 'null'] },
+    serviceSourceAddress: { type: ['string', 'null'] },
   },
   required: [
     'serviceKeys',
@@ -223,6 +271,8 @@ const serviceSchema = {
     'serviceEvidenceType',
     'serviceEvidenceSupportsKeys',
     'serviceEvidenceSummary',
+    'serviceSourceName',
+    'serviceSourceAddress',
   ],
   additionalProperties: false,
 } as const
@@ -386,6 +436,7 @@ function buildPrompt(record: ReviewRecord) {
     'Research requirements:',
     '- Perform exactly ONE web search call. Use only sources returned by that search.',
     '- Prefer the provider/company website. A direct current government/regulatory source is also acceptable.',
+    '- If you select a first-party website that is not already present in the existing evidence packet, the selected page must itself identify this exact facility address. Return that page’s business name and address in serviceSourceName/serviceSourceAddress.',
     '- Do NOT use BBB, Yelp, Yellow Pages, trade/member directories, chambers, social media, SEO directories, or generic directories to clear a service category.',
     '- A web result can NEVER be provider_claim.',
     '- Do NOT infer any use case from PHMSA cylinder specifications, the company name, or generic mentions of cylinders.',
@@ -394,6 +445,8 @@ function buildPrompt(record: ReviewRecord) {
     '- If a source discusses several services, include only the Cylinder Atlas taxonomy keys it clearly establishes.',
     '- serviceConfidence must reflect confidence in those exact taxonomy mappings, not confidence that the company exists.',
     '- If no qualifying service evidence is found in the one search, return empty key arrays, confidence 0, and null evidence fields.',
+    '- serviceSourceName and serviceSourceAddress must be copied/extracted from the selected source when present; do not infer them from the prompt.',
+    '- For same-name businesses in another city/state, return no service evidence.',
     '- URLs must be exact URLs actually consulted in web search. Do not invent or rewrite URLs.',
     '',
     'Precision is more important than recall. Review is preferable to a false service category.',
@@ -515,11 +568,17 @@ function sanitizeResearch(
     typeof raw.serviceEvidenceSummary === 'string'
       ? raw.serviceEvidenceSummary
       : ''
+  const sourceName =
+    typeof raw.serviceSourceName === 'string' ? raw.serviceSourceName : null
+  const sourceAddress =
+    typeof raw.serviceSourceAddress === 'string'
+      ? raw.serviceSourceAddress
+      : null
 
   const sourceConsulted = Boolean(url && sourceWasConsulted(url, consulted))
   const sourceBlocked = Boolean(url && isBlockedDirectoryUrl(url))
   const sourceTypeValid = Boolean(
-    url && type && sourceTypeMatchesUrl(record, type, url),
+    url && type && sourceTypeMatchesUrl(record, type, url, sourceAddress),
   )
   const validSource = Boolean(
     url && type && sourceConsulted && !sourceBlocked && sourceTypeValid,
@@ -544,7 +603,9 @@ function sanitizeResearch(
       serviceEvidenceUrl: null,
       serviceEvidenceType: null,
       serviceEvidenceSupportsKeys: [],
-      serviceEvidenceSummary: null,
+      serviceEvidenceSummary: summary || null,
+      serviceSourceName: sourceName,
+      serviceSourceAddress: sourceAddress,
       serviceEvidenceValidationReason: reason,
       serviceEvidenceRejectedUrl: url,
       serviceEvidenceRejectedType: type,
@@ -569,6 +630,8 @@ function sanitizeResearch(
       serviceEvidenceType: type,
       serviceEvidenceSupportsKeys: [],
       serviceEvidenceSummary: summary || null,
+      serviceSourceName: sourceName,
+      serviceSourceAddress: sourceAddress,
       serviceEvidenceValidationReason: 'no_supported_taxonomy_keys',
       serviceEvidenceRejectedUrl: null,
       serviceEvidenceRejectedType: null,
@@ -582,6 +645,8 @@ function sanitizeResearch(
     serviceEvidenceType: type,
     serviceEvidenceSupportsKeys: supported,
     serviceEvidenceSummary: summary || null,
+    serviceSourceName: sourceName,
+    serviceSourceAddress: sourceAddress,
     serviceEvidenceValidationReason: null,
     serviceEvidenceRejectedUrl: null,
     serviceEvidenceRejectedType: null,
@@ -604,6 +669,8 @@ function mergeRecord(record: ReviewRecord, research: ServiceResearch) {
     serviceEvidenceType: research.serviceEvidenceType,
     serviceEvidenceSupportsKeys: research.serviceEvidenceSupportsKeys,
     serviceEvidenceSummary: research.serviceEvidenceSummary,
+    serviceSourceName: research.serviceSourceName,
+    serviceSourceAddress: research.serviceSourceAddress,
     serviceEvidenceValidationReason: research.serviceEvidenceValidationReason,
     serviceEvidenceRejectedUrl: research.serviceEvidenceRejectedUrl,
     serviceEvidenceRejectedType: research.serviceEvidenceRejectedType,
