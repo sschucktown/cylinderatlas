@@ -435,6 +435,7 @@ function buildPrompt(record: ReviewRecord) {
     '',
     'Research requirements:',
     '- Perform exactly ONE web search call. Use only sources returned by that search.',
+    '- Anchor the search on the exact business name, PHMSA street address, city/state, and likely service term (for example hydrostatic testing, extinguisher, SCUBA, SCBA, propane, welding gas, medical oxygen, beverage CO2, paintball, aviation, or marine). Do not search by business name alone.',
     '- Prefer the provider/company website. A direct current government/regulatory source is also acceptable.',
     '- If you select a first-party website that is not already present in the existing evidence packet, the selected page must itself identify this exact facility address. Return that page’s business name and address in serviceSourceName/serviceSourceAddress.',
     '- Do NOT use BBB, Yelp, Yellow Pages, trade/member directories, chambers, social media, SEO directories, or generic directories to clear a service category.',
