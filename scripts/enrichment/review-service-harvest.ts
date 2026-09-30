@@ -581,7 +581,7 @@ function highSpecificitySupported(key: ServiceKey, summary: string) {
     case 'paintball':
       return /\bpaintball\b/i.test(summary)
     case 'specialty':
-      return /\baviation\b|\baircraft\b|\bmarine\b|\bspecialty cylinder/i.test(
+      return /\baviation\b|\baircraft\b|\bmarine\b/i.test(
         summary,
       )
   }
