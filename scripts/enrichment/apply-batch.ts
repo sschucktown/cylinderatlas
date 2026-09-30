@@ -165,7 +165,7 @@ function serviceKeySpecificitySupported(
     )
   }
   if (key === 'medical-oxygen') {
-    return /\bmedical(?:[-\s]+grade)?[-\s]+(?:oxygen|gas(?:es)?)\b|\b(?:oxygen|gas(?:es)?)\b.{0,50}\b(?:medical|healthcare|hospital|patient)\b|\b(?:medical|healthcare|hospital|patient)\b.{0,50}\b(?:oxygen|gas(?:es)?)\b/i.test(
+    return /\bmedical(?:[-\s]+grade)?[-\s]+(?:oxygen|o2)\b|\b(?:oxygen|o2)\b.{0,50}\b(?:medical|healthcare|hospital|patient)\b|\b(?:medical|healthcare|hospital|patient)\b.{0,50}\b(?:oxygen|o2)\b/i.test(
       summary,
     )
   }
