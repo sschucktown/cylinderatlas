@@ -286,6 +286,8 @@ const eligibleCandidates = actualReviewFacilities
         'evidence_supports_external_customers',
       ) === true
     const previousBatch = rawString(result.raw_result, 'batch') ?? ''
+    const previousServiceReviewBatch =
+      rawString(result.raw_result, 'service_review_batch') ?? ''
     const commonEligible =
       result.identity_match === 'matched' &&
       Number(result.identity_confidence) >= 0.85 &&
@@ -309,7 +311,7 @@ const eligibleCandidates = actualReviewFacilities
     if (bucket === 'missing_service_evidence_only') {
       return (
         identityCorroborated &&
-        !previousBatch.startsWith('review-service-harvest-') &&
+        !previousServiceReviewBatch.startsWith('review-service-harvest-') &&
         (Number(result.service_confidence) < 0.85 ||
           supportedServiceKeys.length === 0)
       )
