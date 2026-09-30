@@ -237,9 +237,31 @@ function sourceTypeMatchesUrl(
   // A first-party domain may be newly discovered during service research only
   // when that same source explicitly identifies the exact already-verified RIN
   // facility. This prevents same-name businesses in other cities from clearing.
+  const normalizedDomain = domain?.replace(/[^a-z0-9]/g, '') ?? ''
+  const businessTokens = [record.currentName, record.phmsaName]
+    .filter(Boolean)
+    .flatMap((value) =>
+      String(value)
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, ' ')
+        .split(/\s+/)
+        .filter(
+          (token) =>
+            token.length >= 5 &&
+            !['company', 'corporation', 'limited', 'incorporated', 'services'].includes(
+              token,
+            ),
+        ),
+    )
+  const domainLooksLikeBusiness = businessTokens.some((token) =>
+    normalizedDomain.includes(token),
+  )
+
   return Boolean(
     domain &&
-      (knownProviderDomain || sourceMatchesExactFacility(record, sourceAddress)),
+      (knownProviderDomain ||
+        (domainLooksLikeBusiness &&
+          sourceMatchesExactFacility(record, sourceAddress))),
   )
 }
 
