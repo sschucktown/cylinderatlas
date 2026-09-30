@@ -211,7 +211,7 @@ function isIdentityOnlyServicePage(raw: string | null | undefined) {
   if (!raw) return false
   try {
     const pathname = new URL(raw).pathname.toLowerCase()
-    return /\/(?:contact(?:-us)?|location|locations)\/?$/.test(pathname)
+    return /\/(?:contact[^/]*|locations?)(?:\/|$)/.test(pathname)
   } catch {
     return false
   }
