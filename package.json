@@ -15,7 +15,8 @@
     "enrich:review-buckets": "tsx scripts/enrichment/export-review-buckets.ts",
     "enrich:review-next": "node --env-file=.env --import tsx scripts/enrichment/export-review-next.ts",
     "enrich:review-harvest": "node --env-file=.env --import tsx scripts/enrichment/review-harvest.ts",
-    "enrich:review-service-harvest": "node --env-file=.env --import tsx scripts/enrichment/review-service-harvest.ts"
+    "enrich:review-service-harvest": "node --env-file=.env --import tsx scripts/enrichment/review-service-harvest.ts",
+    "directory:backfill-public-sources": "node --env-file=.env --import tsx scripts/directory/backfill-public-sources.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.0.0",
