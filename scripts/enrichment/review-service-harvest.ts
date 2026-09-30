@@ -420,10 +420,29 @@ function extractSearchSources(response: OpenAIResponse) {
   return urls
 }
 
+function canonicalConsultedKey(raw: string) {
+  try {
+    const url = new URL(raw)
+    const hostname = url.hostname.toLowerCase().replace(/^www\./, '')
+    const pathname =
+      (url.pathname.replace(/\/+$/, '') || '/').toLowerCase()
+    return hostname + pathname
+  } catch {
+    return normalizeUrl(raw)
+      .replace(/^https?:\/\//i, '')
+      .replace(/^www\./i, '')
+      .replace(/[?#].*$/, '')
+      .replace(/\/+$/, '')
+      .toLowerCase()
+  }
+}
+
 function sourceWasConsulted(url: string | null, consulted: Set<string>) {
   if (!url) return false
-  const normalized = normalizeUrl(url)
-  return [...consulted].some((source) => normalizeUrl(source) === normalized)
+  const key = canonicalConsultedKey(url)
+  return [...consulted].some(
+    (source) => canonicalConsultedKey(source) === key,
+  )
 }
 
 function clampConfidence(value: unknown) {
