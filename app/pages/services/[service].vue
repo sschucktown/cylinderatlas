@@ -78,7 +78,7 @@ useSeoMeta({
     facilities.length +
     ' ' +
     service.label +
-    ' Requalification Providers — Cylinder Atlas',
+    ' Requalification Providers — CylinderAtlas',
   description:
     'Browse ' +
     facilities.length +
@@ -129,7 +129,7 @@ useHead({
 
     <div class="mt-6 grid gap-8 lg:grid-cols-[1fr_300px] lg:items-start">
       <div class="max-w-3xl">
-        <p class="text-sm font-semibold uppercase tracking-[0.14em] text-teal-700">Service directory</p>
+        <p class="text-sm font-semibold uppercase tracking-[0.14em] text-brand-700">Service directory</p>
         <h1 class="mt-2 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
           {{ service.label }} requalification providers
         </h1>
@@ -141,7 +141,7 @@ useHead({
         <div class="mt-6 flex flex-wrap gap-3">
           <NuxtLink
             :to="searchPath"
-            class="rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800"
+            class="rounded-xl bg-navy px-5 py-3 text-sm font-semibold text-white hover:bg-brand-950"
           >
             Search these providers
           </NuxtLink>
@@ -154,15 +154,15 @@ useHead({
         </div>
       </div>
 
-      <aside class="rounded-2xl border border-teal-200 bg-teal-50 p-5">
-        <p class="text-sm font-semibold text-teal-950">How providers qualify</p>
-        <div class="mt-4 space-y-4 text-sm leading-6 text-teal-900">
+      <aside class="rounded-2xl border border-brand-200 bg-brand-50 p-5">
+        <p class="text-sm font-semibold text-brand-950">How providers qualify</p>
+        <div class="mt-4 space-y-4 text-sm leading-6 text-brand-900">
           <p><span class="font-semibold">PHMSA foundation:</span> the facility is tied to a published RIN with hydrostatic authorization.</p>
           <p><span class="font-semibold">Current identity:</span> the business and facility location are reconciled before publication.</p>
           <p><span class="font-semibold">Service evidence:</span> this category requires current customer-facing evidence or reviewed provider confirmation.</p>
         </div>
-        <p class="mt-4 border-t border-teal-200 pt-4 text-xs leading-5 text-teal-800">
-          Cylinder Atlas does not certify providers or determine cylinder pass/fail status.
+        <p class="mt-4 border-t border-brand-200 pt-4 text-xs leading-5 text-brand-800">
+          CylinderAtlas does not certify providers or determine cylinder pass/fail status.
         </p>
       </aside>
     </div>
@@ -175,7 +175,7 @@ useHead({
             State links open the filtered directory rather than creating thin state-service SEO pages.
           </p>
         </div>
-        <NuxtLink :to="searchPath" class="text-sm font-semibold text-teal-800 hover:underline">
+        <NuxtLink :to="searchPath" class="text-sm font-semibold text-brand-800 hover:underline">
           View all {{ facilities.length }}
         </NuxtLink>
       </div>
@@ -195,7 +195,7 @@ useHead({
     <section class="mt-10">
       <div class="flex items-baseline justify-between gap-4">
         <h2 class="text-xl font-semibold text-slate-950">Published providers</h2>
-        <NuxtLink :to="searchPath" class="text-sm font-semibold text-teal-800 hover:underline">
+        <NuxtLink :to="searchPath" class="text-sm font-semibold text-brand-800 hover:underline">
           Filter results
         </NuxtLink>
       </div>
