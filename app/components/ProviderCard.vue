@@ -35,13 +35,13 @@ function trackProviderClick() {
   <NuxtLink
     :to="providerPath(facility)"
     :aria-label="'View ' + name"
-    class="group block rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2"
+    class="group block rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2"
     @click="trackProviderClick"
   >
     <article class="p-5">
       <div class="flex items-start justify-between gap-4">
         <div class="min-w-0">
-          <h3 class="font-semibold leading-5 text-slate-950 group-hover:text-teal-800">
+          <h3 class="font-semibold leading-5 text-slate-950 group-hover:text-brand-800">
             {{ name }}
           </h3>
           <p class="mt-1.5 text-sm text-slate-500">
@@ -57,13 +57,13 @@ function trackProviderClick() {
         <span
           v-for="service in serviceKeys"
           :key="service"
-          class="rounded-full bg-teal-50 px-2.5 py-1 text-xs font-medium text-teal-800"
+          class="rounded-full bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand-800"
         >
           {{ serviceLabel(service) }}
         </span>
       </div>
 
-      <span class="mt-5 inline-flex items-center gap-1 text-sm font-semibold text-teal-800 group-hover:text-teal-950">
+      <span class="mt-5 inline-flex items-center gap-1 text-sm font-semibold text-brand-800 group-hover:text-brand-950">
         View provider
         <span aria-hidden="true">→</span>
       </span>
