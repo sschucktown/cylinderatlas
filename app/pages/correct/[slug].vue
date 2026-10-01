@@ -2,6 +2,65 @@
 import { displayName, providerPath, rinFromProviderSlug, titleCaseCity } from '~/utils/directory'
 import { authRedirectUrl } from '~/utils/site'
 
+const CORRECTION_TYPES = [
+  {
+    value: 'moved',
+    label: 'Facility moved',
+    fieldName: 'display_address',
+    question: 'What changed?',
+    placeholder: 'Provide the current address and explain how it relates to this RIN facility.',
+    helper:
+      'A newer business address does not automatically move a facility-specific RIN. Include evidence connecting the RIN facility to the new location.',
+  },
+  {
+    value: 'closed',
+    label: 'Facility or business closed',
+    fieldName: 'business_status',
+    question: 'What should we know?',
+    placeholder: 'Tell us why you believe this facility or business is no longer operating.',
+    helper:
+      'If possible, include a current first-party, government, or other authoritative source showing the closure.',
+  },
+  {
+    value: 'wrong_phone',
+    label: 'Wrong phone number',
+    fieldName: 'phone',
+    question: 'What is the correct phone number?',
+    placeholder: 'Enter the phone number you believe belongs to this exact facility.',
+    helper:
+      'A company-wide or nearby-location phone may not belong to this RIN facility, so facility-specific evidence is most useful.',
+  },
+  {
+    value: 'wrong_service',
+    label: 'Wrong service information',
+    fieldName: 'services',
+    question: 'What service information is wrong?',
+    placeholder: 'Tell us which service should be added, removed, or changed.',
+    helper:
+      'Service categories require current customer-facing evidence or reviewed provider confirmation.',
+  },
+  {
+    value: 'duplicate',
+    label: 'Duplicate listing',
+    fieldName: 'duplicate',
+    question: 'Which listing appears to be the duplicate?',
+    placeholder: 'Provide the other provider name, RIN, or listing URL and explain why you believe they represent the same facility.',
+    helper:
+      'Multiple RINs can legitimately exist at one location, so duplicate reports are reviewed before any listing is removed.',
+  },
+  {
+    value: 'other',
+    label: 'Other issue',
+    fieldName: 'other',
+    question: 'What should we correct?',
+    placeholder: 'Describe the issue and the corrected information.',
+    helper:
+      'Include enough detail for us to identify the affected listing field and verify the change.',
+  },
+] as const
+
+type CorrectionType = (typeof CORRECTION_TYPES)[number]['value']
+
 const route = useRoute()
 const { $supabase, $posthog } = useNuxtApp()
 
@@ -40,13 +99,17 @@ const authLoading = ref(true)
 const authSending = ref(false)
 const authSent = ref(false)
 const authError = ref('')
-const fieldName = ref('display_name')
+const correctionType = ref<CorrectionType | ''>('')
 const proposedValue = ref('')
 const notes = ref('')
 const submitting = ref(false)
 const submitted = ref(false)
 const submitError = ref('')
 let unsubscribe: (() => void) | undefined
+
+const selectedCorrection = computed(
+  () => CORRECTION_TYPES.find((option) => option.value === correctionType.value) ?? null,
+)
 
 async function refreshUser() {
   authLoading.value = true
@@ -97,10 +160,17 @@ async function submitCorrection() {
   submitted.value = false
   submitError.value = ''
 
+  if (!selectedCorrection.value || !correctionType.value) {
+    submitError.value = 'Select the type of correction.'
+    return
+  }
+
   if (!proposedValue.value.trim()) {
     submitError.value = 'Describe the correction you are requesting.'
     return
   }
+
+  const correction = selectedCorrection.value
 
   submitting.value = true
   const result = await $supabase
@@ -108,7 +178,8 @@ async function submitCorrection() {
     .insert({
       facility_id: facility.id,
       user_id: user.value.id,
-      field_name: fieldName.value,
+      correction_type: correctionType.value,
+      field_name: correction.fieldName,
       proposed_value: {
         proposed: proposedValue.value.trim(),
         notes: notes.value.trim() || null,
@@ -122,15 +193,17 @@ async function submitCorrection() {
     return
   }
 
-  proposedValue.value = ''
-  notes.value = ''
-  submitted.value = true
-
   $posthog.capture('correction_submitted', {
     rin: facility.rin,
     state: facility.state,
-    field_name: fieldName.value,
+    correction_type: correctionType.value,
+    field_name: correction.fieldName,
   })
+
+  correctionType.value = ''
+  proposedValue.value = ''
+  notes.value = ''
+  submitted.value = true
 }
 
 onMounted(async () => {
@@ -212,47 +285,58 @@ useSeoMeta({
         <p class="text-sm text-slate-500">Signed in as {{ user.email || 'authenticated user' }}</p>
 
         <div>
-          <label for="field-name" class="mb-1.5 block text-sm font-semibold text-slate-800">What needs correcting?</label>
+          <label for="correction-type" class="mb-1.5 block text-sm font-semibold text-slate-800">
+            What's wrong with this listing?
+          </label>
           <select
-            id="field-name"
-            v-model="fieldName"
+            id="correction-type"
+            v-model="correctionType"
+            required
             class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 outline-none ring-brand-600 focus:ring-2"
           >
-            <option value="display_name">Provider name</option>
-            <option value="display_address">Facility address</option>
-            <option value="phone">Phone</option>
-            <option value="website_url">Website</option>
-            <option value="services">Services offered</option>
-            <option value="business_status">Business / customer-access status</option>
-            <option value="other">Other</option>
+            <option value="" disabled>Select an issue</option>
+            <option
+              v-for="option in CORRECTION_TYPES"
+              :key="option.value"
+              :value="option.value"
+            >
+              {{ option.label }}
+            </option>
           </select>
         </div>
 
-        <div>
-          <label for="proposed-value" class="mb-1.5 block text-sm font-semibold text-slate-800">What should CylinderAtlas show?</label>
+        <div v-if="selectedCorrection">
+          <label for="proposed-value" class="mb-1.5 block text-sm font-semibold text-slate-800">
+            {{ selectedCorrection.question }}
+          </label>
           <textarea
             id="proposed-value"
             v-model="proposedValue"
             rows="4"
-            placeholder="Describe the corrected information."
+            :placeholder="selectedCorrection.placeholder"
             class="w-full rounded-lg border border-slate-300 px-3 py-2.5 outline-none ring-brand-600 focus:ring-2"
           />
+          <p class="mt-2 text-xs leading-5 text-slate-500">
+            {{ selectedCorrection.helper }}
+          </p>
         </div>
 
-        <div>
-          <label for="notes" class="mb-1.5 block text-sm font-semibold text-slate-800">Evidence or context <span class="font-normal text-slate-500">(optional)</span></label>
+        <div v-if="selectedCorrection">
+          <label for="notes" class="mb-1.5 block text-sm font-semibold text-slate-800">
+            Evidence or context <span class="font-normal text-slate-500">(optional)</span>
+          </label>
           <textarea
             id="notes"
             v-model="notes"
             rows="3"
-            placeholder="Website page, business change, address explanation, or other context."
+            placeholder="Paste a source URL or add context that will help us verify the correction."
             class="w-full rounded-lg border border-slate-300 px-3 py-2.5 outline-none ring-brand-600 focus:ring-2"
           />
         </div>
 
         <button
           type="submit"
-          :disabled="submitting"
+          :disabled="submitting || !selectedCorrection"
           class="rounded-lg bg-navy px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-950 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {{ submitting ? 'Submitting…' : 'Submit correction' }}
