@@ -73,6 +73,16 @@ function trackProviderWebsiteClick() {
   $posthog.capture('provider_website_clicked', {
     rin: facility.rin,
     state: facility.state,
+    city: facility.city,
+    service_keys: services.map((service) => service.service_key),
+  })
+}
+
+function trackProviderPhoneClick() {
+  $posthog.capture('provider_phone_clicked', {
+    rin: facility.rin,
+    state: facility.state,
+    city: facility.city,
     service_keys: services.map((service) => service.service_key),
   })
 }
@@ -164,6 +174,7 @@ useHead({
             v-if="facility.phone"
             :href="'tel:' + facility.phone"
             class="rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800"
+            @click="trackProviderPhoneClick"
           >
             Call provider
           </a>
@@ -234,6 +245,7 @@ useHead({
                   target="_blank"
                   rel="noopener noreferrer"
                   class="font-medium text-teal-800 hover:underline"
+                  @click="trackProviderWebsiteClick"
                 >
                   Visit provider website
                 </a>
