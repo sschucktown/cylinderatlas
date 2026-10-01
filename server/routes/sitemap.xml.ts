@@ -64,6 +64,7 @@ export default defineEventHandler(async (event) => {
 
   const urls: Array<{ loc: string; lastmod?: string }> = [
     { loc: absoluteUrl('/') },
+    { loc: absoluteUrl('/how-we-verify') },
   ]
 
   for (const facility of facilities) {
