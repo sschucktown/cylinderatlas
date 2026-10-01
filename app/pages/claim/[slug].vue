@@ -3,7 +3,7 @@ import { displayName, providerPath, rinFromProviderSlug, titleCaseCity } from '~
 import { authRedirectUrl } from '~/utils/site'
 
 const route = useRoute()
-const { $supabase } = useNuxtApp()
+const { $supabase, $posthog } = useNuxtApp()
 
 const slug = String(route.params.slug ?? '')
 const rin = rinFromProviderSlug(slug)
@@ -133,9 +133,19 @@ async function submitClaim() {
   }
 
   claimStatus.value = result.data.status
+
+  $posthog.capture('claim_submitted', {
+    rin: facility.rin,
+    state: facility.state,
+  })
 }
 
 onMounted(async () => {
+  $posthog.capture('claim_started', {
+    rin: facility.rin,
+    state: facility.state,
+  })
+
   await refreshUser()
   const { data } = $supabase.auth.onAuthStateChange(() => {
     window.setTimeout(() => {
