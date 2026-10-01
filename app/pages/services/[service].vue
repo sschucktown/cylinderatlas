@@ -164,6 +164,12 @@ useHead({
         <p class="mt-4 border-t border-brand-200 pt-4 text-xs leading-5 text-brand-800">
           CylinderAtlas does not certify providers or determine cylinder pass/fail status.
         </p>
+        <NuxtLink
+          to="/how-we-verify"
+          class="mt-3 inline-flex text-xs font-semibold text-brand-950 hover:underline"
+        >
+          How verification works
+        </NuxtLink>
       </aside>
     </div>
 
