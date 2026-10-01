@@ -320,15 +320,12 @@ if (dryRun) {
   console.log(JSON.stringify({ ...summary, conflicts: websiteConflicts }, null, 2))
   process.exitCode = 0
 } else {
-  for (let index = 0; index < facilityIds.length; index += 200) {
-    const ids = facilityIds.slice(index, index + 200)
-    const deleteResult = await supabase
-      .from('facility_public_sources')
-      .delete()
-      .in('facility_id', ids)
+  const deleteResult = await supabase
+    .from('facility_public_sources')
+    .delete()
+    .not('id', 'is', null)
 
-    if (deleteResult.error) throw deleteResult.error
-  }
+  if (deleteResult.error) throw deleteResult.error
 
   for (let index = 0; index < publicSources.length; index += 500) {
     const rows = publicSources.slice(index, index + 500)
