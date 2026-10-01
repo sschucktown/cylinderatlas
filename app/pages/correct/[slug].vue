@@ -3,7 +3,7 @@ import { displayName, providerPath, rinFromProviderSlug, titleCaseCity } from '~
 import { authRedirectUrl } from '~/utils/site'
 
 const route = useRoute()
-const { $supabase } = useNuxtApp()
+const { $supabase, $posthog } = useNuxtApp()
 
 const slug = String(route.params.slug ?? '')
 const rin = rinFromProviderSlug(slug)
@@ -125,9 +125,20 @@ async function submitCorrection() {
   proposedValue.value = ''
   notes.value = ''
   submitted.value = true
+
+  $posthog.capture('correction_submitted', {
+    rin: facility.rin,
+    state: facility.state,
+    field_name: fieldName.value,
+  })
 }
 
 onMounted(async () => {
+  $posthog.capture('correction_started', {
+    rin: facility.rin,
+    state: facility.state,
+  })
+
   await refreshUser()
   const { data } = $supabase.auth.onAuthStateChange(() => {
     window.setTimeout(() => {
