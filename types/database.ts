@@ -20,10 +20,12 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          correction_type: string
           created_at?: string
           user_id: string
         }
         Update: {
+          correction_type?: string
           created_at?: string
           user_id?: string
         }
@@ -102,6 +104,7 @@ export type Database = {
       }
       corrections: {
         Row: {
+          correction_type: string
           created_at: string
           facility_id: string
           field_name: string
