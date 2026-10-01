@@ -126,7 +126,7 @@ const availableServices = computed(() =>
 )
 
 useSeoMeta({
-  title: 'Cylinder Atlas — Find DOT Cylinder Requalification Providers',
+  title: 'CylinderAtlas — Find DOT Cylinder Requalification Providers',
   description:
     'Find evidence-backed U.S. cylinder requalification providers by service and location, built from PHMSA RIN data and current business evidence.',
 })
@@ -141,14 +141,14 @@ useHead({
     <section class="border-b border-slate-200 bg-white">
       <div class="mx-auto grid max-w-7xl gap-12 px-6 py-16 lg:grid-cols-[1.2fr_0.8fr] lg:py-24">
         <div>
-          <p class="text-sm font-semibold uppercase tracking-[0.18em] text-teal-700">
+          <p class="text-sm font-semibold uppercase tracking-[0.18em] text-brand-700">
             Evidence-backed cylinder directory
           </p>
           <h1 class="mt-4 max-w-4xl text-4xl font-semibold tracking-tight text-slate-950 sm:text-6xl">
             Find a cylinder requalification provider with better evidence.
           </h1>
           <p class="mt-6 max-w-2xl text-lg leading-8 text-slate-600">
-            Cylinder Atlas starts with PHMSA RIN data, then checks current business identity and customer-facing services before a facility appears in the directory.
+            CylinderAtlas starts with PHMSA RIN data, then checks current business identity and customer-facing services before a facility appears in the directory.
           </p>
 
           <form action="/search" method="get" class="mt-8 flex max-w-2xl flex-col gap-3 sm:flex-row" @submit="trackDirectorySearch">
@@ -158,11 +158,11 @@ useHead({
               name="q"
               type="search"
               placeholder="Provider, city, state, ZIP, or RIN"
-              class="min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-4 py-3 text-base outline-none ring-teal-600 focus:ring-2"
+              class="min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-4 py-3 text-base outline-none ring-brand-600 focus:ring-2"
             >
             <button
               type="submit"
-              class="rounded-xl bg-slate-950 px-5 py-3 font-semibold text-white hover:bg-slate-800"
+              class="rounded-xl bg-navy px-5 py-3 font-semibold text-white hover:bg-brand-950"
             >
               Search
             </button>
@@ -193,7 +193,7 @@ useHead({
           <p class="text-sm font-semibold uppercase tracking-[0.14em] text-slate-500">Browse by service</p>
           <h2 class="mt-2 text-2xl font-semibold tracking-tight text-slate-950">What kind of cylinder needs service?</h2>
         </div>
-        <NuxtLink to="/search" class="hidden text-sm font-semibold text-teal-800 hover:underline sm:block">
+        <NuxtLink to="/search" class="hidden text-sm font-semibold text-brand-800 hover:underline sm:block">
           Search all providers
         </NuxtLink>
       </div>
@@ -248,7 +248,7 @@ useHead({
           v-for="state in directory.states"
           :key="state.code"
           :to="statePath(state.code)"
-          class="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 shadow-sm hover:border-teal-300 hover:bg-teal-50 hover:text-slate-950"
+          class="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 shadow-sm hover:border-brand-300 hover:bg-brand-50 hover:text-slate-950"
         >
           <span>{{ stateName(state.code) }}</span>
           <span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">
