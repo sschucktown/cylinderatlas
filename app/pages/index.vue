@@ -111,7 +111,9 @@ function trackDirectorySearch(event: Event) {
   $posthog.capture('directory_search_submitted', {
     source: 'homepage',
     has_query: Boolean(query),
+    query: query || null,
     query_length: query.length,
+    active_filter_count: Number(Boolean(query)),
   })
 }
 
