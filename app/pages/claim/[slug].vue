@@ -160,26 +160,26 @@ onBeforeUnmount(() => {
 })
 
 useSeoMeta({
-  title: 'Claim ' + name + ' — Cylinder Atlas',
-  description: 'Request ownership of this Cylinder Atlas provider listing.',
+  title: 'Claim ' + name + ' — CylinderAtlas',
+  description: 'Request ownership of this CylinderAtlas provider listing.',
   robots: 'noindex,nofollow',
 })
 </script>
 
 <template>
   <main class="mx-auto max-w-3xl px-6 py-12">
-    <NuxtLink :to="profilePath" class="text-sm font-semibold text-teal-800 hover:underline">
+    <NuxtLink :to="profilePath" class="text-sm font-semibold text-brand-800 hover:underline">
       ← Back to provider
     </NuxtLink>
 
     <div class="mt-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-      <p class="text-sm font-semibold uppercase tracking-[0.14em] text-teal-700">Provider claim</p>
+      <p class="text-sm font-semibold uppercase tracking-[0.14em] text-brand-700">Provider claim</p>
       <h1 class="mt-2 text-3xl font-semibold tracking-tight text-slate-950">Claim {{ name }}</h1>
       <p class="mt-3 text-sm leading-6 text-slate-600">
         {{ titleCaseCity(facility.city) }}, {{ facility.state }} · PHMSA RIN {{ facility.rin }}
       </p>
       <p class="mt-5 leading-7 text-slate-600">
-        Claiming a listing does not change its PHMSA status or make Cylinder Atlas an approval authority. A claim creates a review request so provider-entered information can be tied to the correct facility.
+        Claiming a listing does not change its PHMSA status or make CylinderAtlas an approval authority. A claim creates a review request so provider-entered information can be tied to the correct facility.
       </p>
 
       <div v-if="authLoading" class="mt-8 text-sm text-slate-500">Checking sign-in…</div>
@@ -198,18 +198,18 @@ useSeoMeta({
             type="email"
             autocomplete="email"
             placeholder="you@company.com"
-            class="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2.5 outline-none ring-teal-600 focus:ring-2"
+            class="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2.5 outline-none ring-brand-600 focus:ring-2"
           >
           <button
             type="submit"
             :disabled="authSending"
-            class="rounded-lg bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+            class="rounded-lg bg-navy px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-950 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {{ authSending ? 'Sending…' : 'Send sign-in link' }}
           </button>
         </form>
 
-        <p v-if="authSent" class="mt-3 text-sm font-medium text-teal-800">
+        <p v-if="authSent" class="mt-3 text-sm font-medium text-brand-800">
           Check your email for the sign-in link.
         </p>
         <p v-if="authError" class="mt-3 text-sm text-red-700">{{ authError }}</p>
@@ -218,9 +218,9 @@ useSeoMeta({
       <section v-else class="mt-8">
         <p class="text-sm text-slate-500">Signed in as {{ user.email || 'authenticated user' }}</p>
 
-        <div v-if="claimStatus" class="mt-4 rounded-2xl border border-teal-200 bg-teal-50 p-5">
-          <p class="font-semibold text-teal-950">Claim request: {{ claimStatus }}</p>
-          <p class="mt-2 text-sm leading-6 text-teal-900">
+        <div v-if="claimStatus" class="mt-4 rounded-2xl border border-brand-200 bg-brand-50 p-5">
+          <p class="font-semibold text-brand-950">Claim request: {{ claimStatus }}</p>
+          <p class="mt-2 text-sm leading-6 text-brand-900">
             Public provider data will not change until the request is reviewed.
           </p>
         </div>
@@ -228,12 +228,12 @@ useSeoMeta({
         <div v-else class="mt-4 rounded-2xl border border-slate-200 p-5">
           <h2 class="font-semibold text-slate-950">Submit claim request</h2>
           <p class="mt-2 text-sm leading-6 text-slate-600">
-            Cylinder Atlas will review the account-to-facility relationship before treating this account as the provider.
+            CylinderAtlas will review the account-to-facility relationship before treating this account as the provider.
           </p>
           <button
             type="button"
             :disabled="submitting"
-            class="mt-4 rounded-lg bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+            class="mt-4 rounded-lg bg-navy px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-950 disabled:cursor-not-allowed disabled:opacity-60"
             @click="submitClaim"
           >
             {{ submitting ? 'Submitting…' : 'Submit claim' }}
