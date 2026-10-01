@@ -106,7 +106,7 @@ if (route.path !== currentPath) {
 }
 
 useSeoMeta({
-  title: name + ' — Cylinder Requalification Provider | Cylinder Atlas',
+  title: name + ' — Cylinder Requalification Provider | CylinderAtlas',
   description:
     'View evidence-backed cylinder requalification services, PHMSA RIN, location, and verification details for ' +
     name +
@@ -154,7 +154,7 @@ useHead({
     <div class="mt-6 grid gap-8 lg:grid-cols-[1fr_320px]">
       <div>
         <div class="flex flex-wrap items-center gap-2">
-          <span class="rounded-full bg-teal-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-teal-800">
+          <span class="rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-brand-800">
             PHMSA-listed RIN
           </span>
           <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
@@ -173,7 +173,7 @@ useHead({
           <a
             v-if="facility.phone"
             :href="'tel:' + facility.phone"
-            class="rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800"
+            class="rounded-xl bg-navy px-5 py-3 text-sm font-semibold text-white hover:bg-brand-950"
             @click="trackProviderPhoneClick"
           >
             Call provider
@@ -201,7 +201,7 @@ useHead({
               v-for="service in services"
               :key="service.service_key"
               :to="'/services/' + service.service_key"
-              class="rounded-xl border border-slate-200 bg-slate-50 p-4 hover:border-teal-300 hover:bg-teal-50"
+              class="rounded-xl border border-slate-200 bg-slate-50 p-4 hover:border-brand-300 hover:bg-brand-50"
             >
               <p class="font-semibold text-slate-950">{{ serviceLabel(service.service_key) }}</p>
               <p class="mt-1 text-xs font-medium text-slate-500">
@@ -214,7 +214,7 @@ useHead({
           </p>
 
           <p class="mt-4 text-xs leading-5 text-slate-500">
-            Service categories are published only when Cylinder Atlas has current supporting evidence or a reviewed provider confirmation. Confirm cylinder-specific capabilities directly with the provider.
+            Service categories are published only when CylinderAtlas has current supporting evidence or a reviewed provider confirmation. Confirm cylinder-specific capabilities directly with the provider.
           </p>
         </section>
 
@@ -232,7 +232,7 @@ useHead({
             <div v-if="facility.phone">
               <dt class="text-xs font-semibold uppercase tracking-wide text-slate-500">Phone</dt>
               <dd class="mt-1 text-sm">
-                <a :href="'tel:' + facility.phone" class="font-medium text-teal-800 hover:underline">
+                <a :href="'tel:' + facility.phone" class="font-medium text-brand-800 hover:underline">
                   {{ facility.phone }}
                 </a>
               </dd>
@@ -244,7 +244,7 @@ useHead({
                   :href="facility.website_url"
                   target="_blank"
                   rel="noopener noreferrer"
-                  class="font-medium text-teal-800 hover:underline"
+                  class="font-medium text-brand-800 hover:underline"
                   @click="trackProviderWebsiteClick"
                 >
                   Visit provider website
@@ -260,7 +260,7 @@ useHead({
             <div>
               <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Regulatory foundation</p>
               <p class="mt-1 text-sm leading-6 text-slate-700">
-                Cylinder Atlas starts with PHMSA cylinder requalifier data tied to RIN {{ facility.rin }}.
+                CylinderAtlas starts with PHMSA cylinder requalifier data tied to RIN {{ facility.rin }}.
                 <span v-if="sourceEffectiveDate"> Source record date: {{ sourceEffectiveDate }}.</span>
               </p>
             </div>
@@ -297,7 +297,7 @@ useHead({
                     :href="source.url"
                     target="_blank"
                     rel="noopener noreferrer"
-                    class="text-sm font-semibold text-teal-800 hover:underline"
+                    class="text-sm font-semibold text-brand-800 hover:underline"
                   >
                     {{ source.label }}
                   </a>
@@ -317,30 +317,30 @@ useHead({
           </div>
 
           <p class="mt-5 border-t border-slate-200 pt-4 text-xs leading-5 text-slate-500">
-            Cylinder Atlas does not certify or approve requalification facilities. PHMSA is the regulatory source for RIN information; Cylinder Atlas adds current business and service evidence for directory use.
+            CylinderAtlas does not certify or approve requalification facilities. PHMSA is the regulatory source for RIN information; CylinderAtlas adds current business and service evidence for directory use.
           </p>
         </section>
       </div>
 
       <aside class="h-fit space-y-4 lg:sticky lg:top-6">
-        <section class="rounded-2xl border border-teal-200 bg-teal-50 p-6">
-          <p class="text-sm font-semibold text-teal-950">Why this listing is public</p>
-          <p class="mt-3 text-sm leading-6 text-teal-900">
-            It cleared the current Cylinder Atlas publication gate: PHMSA hydrostatic authorization, matched facility identity, active business status, outside-customer access, evidence-backed service, and no unresolved identity or location conflict.
+        <section class="rounded-2xl border border-brand-200 bg-brand-50 p-6">
+          <p class="text-sm font-semibold text-brand-950">Why this listing is public</p>
+          <p class="mt-3 text-sm leading-6 text-brand-900">
+            It cleared the current CylinderAtlas publication gate: PHMSA hydrostatic authorization, matched facility identity, active business status, outside-customer access, evidence-backed service, and no unresolved identity or location conflict.
           </p>
 
-          <dl class="mt-5 space-y-4 border-t border-teal-200 pt-5">
+          <dl class="mt-5 space-y-4 border-t border-brand-200 pt-5">
             <div>
-              <dt class="text-xs font-semibold uppercase tracking-wide text-teal-700">PHMSA-listed RIN</dt>
-              <dd class="mt-1 text-sm font-semibold text-teal-950">{{ facility.rin }}</dd>
+              <dt class="text-xs font-semibold uppercase tracking-wide text-brand-700">PHMSA-listed RIN</dt>
+              <dd class="mt-1 text-sm font-semibold text-brand-950">{{ facility.rin }}</dd>
             </div>
             <div v-if="verifiedDate">
-              <dt class="text-xs font-semibold uppercase tracking-wide text-teal-700">Last checked</dt>
-              <dd class="mt-1 text-sm font-semibold text-teal-950">{{ verifiedDate }}</dd>
+              <dt class="text-xs font-semibold uppercase tracking-wide text-brand-700">Last checked</dt>
+              <dd class="mt-1 text-sm font-semibold text-brand-950">{{ verifiedDate }}</dd>
             </div>
           </dl>
 
-          <p class="mt-5 text-xs leading-5 text-teal-800">
+          <p class="mt-5 text-xs leading-5 text-brand-800">
             Verify service details, pricing, hours, and turnaround directly with the provider before visiting or shipping a cylinder.
           </p>
         </section>
@@ -353,7 +353,7 @@ useHead({
           <div class="mt-4 grid gap-2">
             <NuxtLink
               :to="claimPath"
-              class="rounded-lg bg-slate-950 px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-slate-800"
+              class="rounded-lg bg-navy px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-brand-950"
             >
               Claim this listing
             </NuxtLink>

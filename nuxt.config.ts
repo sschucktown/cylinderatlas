@@ -3,6 +3,16 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineNuxtConfig({
   compatibilityDate: '2026-09-23',
   devtools: { enabled: true },
+  app: {
+    head: {
+      link: [
+        { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
+      ],
+      meta: [
+        { name: 'theme-color', content: '#0B2850' },
+      ],
+    },
+  },
   modules: ['@vercel/analytics'],
   runtimeConfig: {
     public: {

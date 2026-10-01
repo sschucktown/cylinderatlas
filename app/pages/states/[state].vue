@@ -70,7 +70,7 @@ function stateServiceSearchPath(serviceKey: string) {
 const name = stateName(stateCode)
 
 useSeoMeta({
-  title: 'Cylinder Requalification Providers in ' + name + ' — Cylinder Atlas',
+  title: 'Cylinder Requalification Providers in ' + name + ' — CylinderAtlas',
   description:
     'Find published cylinder requalification providers in ' +
     name +
@@ -113,12 +113,12 @@ useHead({
     </nav>
 
     <div class="mt-6 max-w-3xl">
-      <p class="text-sm font-semibold uppercase tracking-[0.14em] text-teal-700">State directory</p>
+      <p class="text-sm font-semibold uppercase tracking-[0.14em] text-brand-700">State directory</p>
       <h1 class="mt-2 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
         Cylinder requalification providers in {{ name }}
       </h1>
       <p class="mt-4 text-lg leading-8 text-slate-600">
-        {{ facilities.length }} published {{ facilities.length === 1 ? 'facility' : 'facilities' }} currently clear the Cylinder Atlas identity and service-evidence gate in {{ name }}.
+        {{ facilities.length }} published {{ facilities.length === 1 ? 'facility' : 'facilities' }} currently clear the CylinderAtlas identity and service-evidence gate in {{ name }}.
       </p>
     </div>
 

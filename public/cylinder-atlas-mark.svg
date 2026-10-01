@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title id="title">CylinderAtlas</title>
+  <path fill="#0C6CEC" d="M32 2C16 2 6 13.2 6 27.4c0 17 18.8 30.2 24.1 33.7a3.5 3.5 0 0 0 3.8 0C39.2 57.6 58 44.4 58 27.4 58 13.2 48 2 32 2Z"/>
+  <path fill="#fff" d="M27 10.5c0-1.1.9-2 2-2h6c1.1 0 2 .9 2 2s-.9 2-2 2h-6c-1.1 0-2-.9-2-2Zm2.5 2h5v5h-5v-5ZM25 17.5h14a5 5 0 0 1 5 5v18.6c0 1.3-.5 2.5-1.4 3.4L32 55.8 21.4 44.5a5 5 0 0 1-1.4-3.4V22.5a5 5 0 0 1 5-5Z"/>
+</svg>

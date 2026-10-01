@@ -175,8 +175,8 @@ onBeforeUnmount(() => {
 })
 
 useSeoMeta({
-  title: 'Claim Review — Cylinder Atlas Admin',
-  description: 'Internal Cylinder Atlas provider claim review.',
+  title: 'Claim Review — CylinderAtlas Admin',
+  description: 'Internal CylinderAtlas provider claim review.',
   robots: 'noindex,nofollow',
 })
 </script>
@@ -185,7 +185,7 @@ useSeoMeta({
   <main class="mx-auto max-w-6xl px-6 py-10">
     <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
       <div>
-        <p class="text-sm font-semibold uppercase tracking-[0.14em] text-teal-700">Cylinder Atlas Admin</p>
+        <p class="text-sm font-semibold uppercase tracking-[0.14em] text-brand-700">CylinderAtlas Admin</p>
         <h1 class="mt-2 text-3xl font-semibold tracking-tight text-slate-950">Provider claim review</h1>
         <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
           Verify the claimant-to-facility relationship before giving the account provider ownership.
@@ -209,7 +209,7 @@ useSeoMeta({
     <section v-else-if="!user" class="mt-8 max-w-xl rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
       <h2 class="text-xl font-semibold text-slate-950">Admin sign in</h2>
       <p class="mt-2 text-sm leading-6 text-slate-600">
-        Use an email address already authorized for Cylinder Atlas administration.
+        Use an email address already authorized for CylinderAtlas administration.
       </p>
 
       <form class="mt-5 flex flex-col gap-3 sm:flex-row" @submit.prevent="sendSignInLink">
@@ -220,25 +220,25 @@ useSeoMeta({
           type="email"
           autocomplete="email"
           placeholder="you@example.com"
-          class="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2.5 outline-none ring-teal-600 focus:ring-2"
+          class="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2.5 outline-none ring-brand-600 focus:ring-2"
         >
         <button
           type="submit"
           :disabled="authSending"
-          class="rounded-lg bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+          class="rounded-lg bg-navy px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-950 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {{ authSending ? 'Sending…' : 'Send sign-in link' }}
         </button>
       </form>
 
-      <p v-if="authSent" class="mt-3 text-sm font-medium text-teal-800">Check your email for the sign-in link.</p>
+      <p v-if="authSent" class="mt-3 text-sm font-medium text-brand-800">Check your email for the sign-in link.</p>
       <p v-if="authError" class="mt-3 text-sm text-red-700">{{ authError }}</p>
     </section>
 
     <section v-else-if="!isAdmin" class="mt-8 rounded-3xl border border-red-200 bg-red-50 p-6">
       <h2 class="font-semibold text-red-950">Not authorized</h2>
       <p class="mt-2 text-sm leading-6 text-red-900">
-        {{ user.email || 'This account' }} is signed in, but is not a Cylinder Atlas administrator.
+        {{ user.email || 'This account' }} is signed in, but is not a CylinderAtlas administrator.
       </p>
     </section>
 
@@ -318,7 +318,7 @@ useSeoMeta({
 
                 <NuxtLink
                   :to="claimProviderPath(claim)"
-                  class="mt-5 inline-block text-sm font-semibold text-teal-800 hover:underline"
+                  class="mt-5 inline-block text-sm font-semibold text-brand-800 hover:underline"
                 >
                   View public provider profile →
                 </NuxtLink>
@@ -328,7 +328,7 @@ useSeoMeta({
                 <button
                   type="button"
                   :disabled="actionClaimId === claim.claim_id"
-                  class="rounded-lg bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
+                  class="rounded-lg bg-navy px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-950 disabled:opacity-60"
                   @click="reviewClaim(claim, 'verified')"
                 >
                   {{ actionClaimId === claim.claim_id ? 'Saving…' : 'Approve' }}
@@ -367,7 +367,7 @@ useSeoMeta({
             </div>
             <span
               class="self-start rounded-full px-2.5 py-1 text-xs font-semibold capitalize sm:self-auto"
-              :class="claim.claim_status === 'verified' ? 'bg-teal-100 text-teal-900' : 'bg-red-100 text-red-900'"
+              :class="claim.claim_status === 'verified' ? 'bg-brand-100 text-brand-900' : 'bg-red-100 text-red-900'"
             >
               {{ claim.claim_status }}
             </span>

@@ -153,20 +153,20 @@ onBeforeUnmount(() => {
 })
 
 useSeoMeta({
-  title: 'Report or Correct ' + name + ' — Cylinder Atlas',
-  description: 'Submit a correction request for this Cylinder Atlas provider listing.',
+  title: 'Report or Correct ' + name + ' — CylinderAtlas',
+  description: 'Submit a correction request for this CylinderAtlas provider listing.',
   robots: 'noindex,nofollow',
 })
 </script>
 
 <template>
   <main class="mx-auto max-w-3xl px-6 py-12">
-    <NuxtLink :to="profilePath" class="text-sm font-semibold text-teal-800 hover:underline">
+    <NuxtLink :to="profilePath" class="text-sm font-semibold text-brand-800 hover:underline">
       ← Back to provider
     </NuxtLink>
 
     <div class="mt-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-      <p class="text-sm font-semibold uppercase tracking-[0.14em] text-teal-700">Listing correction</p>
+      <p class="text-sm font-semibold uppercase tracking-[0.14em] text-brand-700">Listing correction</p>
       <h1 class="mt-2 text-3xl font-semibold tracking-tight text-slate-950">Report or correct {{ name }}</h1>
       <p class="mt-3 text-sm leading-6 text-slate-600">
         {{ titleCaseCity(facility.city) }}, {{ facility.state }} · PHMSA RIN {{ facility.rin }}
@@ -191,18 +191,18 @@ useSeoMeta({
             type="email"
             autocomplete="email"
             placeholder="you@example.com"
-            class="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2.5 outline-none ring-teal-600 focus:ring-2"
+            class="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2.5 outline-none ring-brand-600 focus:ring-2"
           >
           <button
             type="submit"
             :disabled="authSending"
-            class="rounded-lg bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+            class="rounded-lg bg-navy px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-950 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {{ authSending ? 'Sending…' : 'Send sign-in link' }}
           </button>
         </form>
 
-        <p v-if="authSent" class="mt-3 text-sm font-medium text-teal-800">
+        <p v-if="authSent" class="mt-3 text-sm font-medium text-brand-800">
           Check your email for the sign-in link.
         </p>
         <p v-if="authError" class="mt-3 text-sm text-red-700">{{ authError }}</p>
@@ -216,7 +216,7 @@ useSeoMeta({
           <select
             id="field-name"
             v-model="fieldName"
-            class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 outline-none ring-teal-600 focus:ring-2"
+            class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 outline-none ring-brand-600 focus:ring-2"
           >
             <option value="display_name">Provider name</option>
             <option value="display_address">Facility address</option>
@@ -229,13 +229,13 @@ useSeoMeta({
         </div>
 
         <div>
-          <label for="proposed-value" class="mb-1.5 block text-sm font-semibold text-slate-800">What should Cylinder Atlas show?</label>
+          <label for="proposed-value" class="mb-1.5 block text-sm font-semibold text-slate-800">What should CylinderAtlas show?</label>
           <textarea
             id="proposed-value"
             v-model="proposedValue"
             rows="4"
             placeholder="Describe the corrected information."
-            class="w-full rounded-lg border border-slate-300 px-3 py-2.5 outline-none ring-teal-600 focus:ring-2"
+            class="w-full rounded-lg border border-slate-300 px-3 py-2.5 outline-none ring-brand-600 focus:ring-2"
           />
         </div>
 
@@ -246,19 +246,19 @@ useSeoMeta({
             v-model="notes"
             rows="3"
             placeholder="Website page, business change, address explanation, or other context."
-            class="w-full rounded-lg border border-slate-300 px-3 py-2.5 outline-none ring-teal-600 focus:ring-2"
+            class="w-full rounded-lg border border-slate-300 px-3 py-2.5 outline-none ring-brand-600 focus:ring-2"
           />
         </div>
 
         <button
           type="submit"
           :disabled="submitting"
-          class="rounded-lg bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+          class="rounded-lg bg-navy px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-950 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {{ submitting ? 'Submitting…' : 'Submit correction' }}
         </button>
 
-        <p v-if="submitted" class="text-sm font-medium text-teal-800">
+        <p v-if="submitted" class="text-sm font-medium text-brand-800">
           Correction submitted for review. The public listing has not been changed automatically.
         </p>
         <p v-if="submitError" class="text-sm text-red-700">{{ submitError }}</p>
