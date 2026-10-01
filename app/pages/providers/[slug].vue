@@ -343,6 +343,12 @@ useHead({
           <p class="mt-5 text-xs leading-5 text-brand-800">
             Verify service details, pricing, hours, and turnaround directly with the provider before visiting or shipping a cylinder.
           </p>
+          <NuxtLink
+            to="/how-we-verify"
+            class="mt-4 inline-flex text-xs font-semibold text-brand-950 hover:underline"
+          >
+            How CylinderAtlas verifies providers
+          </NuxtLink>
         </section>
 
         <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
