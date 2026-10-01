@@ -152,30 +152,61 @@ const rangeStart = computed(() => resultCount.value ? (currentPage.value - 1) * 
 const rangeEnd = computed(() => Math.min(currentPage.value * PAGE_SIZE, resultCount.value))
 const hasFilters = computed(() => Boolean(searchTerm.value || stateFilter.value || serviceFilter.value))
 
+function searchAnalyticsProperties(resultCount?: number) {
+  const properties = {
+    has_query: Boolean(searchTerm.value),
+    query: searchTerm.value || null,
+    query_length: searchTerm.value.length,
+    state: stateFilter.value || null,
+    service_key: serviceFilter.value || null,
+    active_filter_count:
+      Number(Boolean(searchTerm.value)) +
+      Number(Boolean(stateFilter.value)) +
+      Number(Boolean(serviceFilter.value)),
+    page: currentPage.value,
+  }
+
+  if (typeof resultCount !== 'number') return properties
+
+  return {
+    ...properties,
+    result_count: resultCount,
+    zero_results: resultCount === 0,
+  }
+}
+
 watch(
   () => results.value,
   (value) => {
     if (!import.meta.client || !value) return
 
-    $posthog.capture('directory_searched', {
-      has_query: Boolean(searchTerm.value),
-      state: stateFilter.value || null,
-      service_key: serviceFilter.value || null,
-      result_count: value.total,
-      page: currentPage.value,
-    })
+    const properties = searchAnalyticsProperties(value.total)
+    $posthog.capture('directory_searched', properties)
+
+    if (value.total === 0 && currentPage.value === 1 && hasFilters.value) {
+      $posthog.capture('directory_zero_results', properties)
+    }
   },
   { immediate: true },
 )
 
-function trackSearchSubmit() {
+function trackSearchSubmit(event: Event) {
+  const form = event.currentTarget as HTMLFormElement
+  const data = new FormData(form)
+  const query = String(data.get('q') ?? '').trim()
+  const state = String(data.get('state') ?? '').trim().toUpperCase()
+  const service = String(data.get('service') ?? '').trim()
+
   $posthog.capture('directory_search_submitted', {
     source: 'search_page',
-    has_query: Boolean(searchTerm.value),
-    query_length: searchTerm.value.length,
-    state: stateFilter.value || null,
-    service_key: serviceFilter.value || null,
-    page: currentPage.value,
+    has_query: Boolean(query),
+    query: query || null,
+    query_length: query.length,
+    state: state || null,
+    service_key: service || null,
+    active_filter_count:
+      Number(Boolean(query)) + Number(Boolean(state)) + Number(Boolean(service)),
+    page: 1,
   })
 }
 
