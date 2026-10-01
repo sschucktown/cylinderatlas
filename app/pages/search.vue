@@ -5,7 +5,7 @@ import { canonicalUrl } from '~/utils/site'
 const PAGE_SIZE = 24
 
 const route = useRoute()
-const { $supabase } = useNuxtApp()
+const { $supabase, $posthog } = useNuxtApp()
 
 function queryString(value: unknown) {
   if (Array.isArray(value)) return typeof value[0] === 'string' ? value[0] : ''
@@ -151,6 +151,22 @@ const totalPages = computed(() => Math.max(1, Math.ceil(resultCount.value / PAGE
 const rangeStart = computed(() => resultCount.value ? (currentPage.value - 1) * PAGE_SIZE + 1 : 0)
 const rangeEnd = computed(() => Math.min(currentPage.value * PAGE_SIZE, resultCount.value))
 const hasFilters = computed(() => Boolean(searchTerm.value || stateFilter.value || serviceFilter.value))
+
+watch(
+  () => results.value,
+  (value) => {
+    if (!import.meta.client || !value) return
+
+    $posthog.capture('directory_searched', {
+      has_query: Boolean(searchTerm.value),
+      state: stateFilter.value || null,
+      service_key: serviceFilter.value || null,
+      result_count: value.total,
+      page: currentPage.value,
+    })
+  },
+  { immediate: true },
+)
 
 function pageLink(page: number) {
   const query: Record<string, string> = {}
