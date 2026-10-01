@@ -106,7 +106,11 @@ const { data: directory } = await useAsyncData('directory-home', async () => {
 function trackDirectorySearch(event: Event) {
   const form = event.currentTarget as HTMLFormElement
   const data = new FormData(form)
-  const query = String(data.get('q') ?? '').trim()
+  const query = String(data.get('q') ?? '')
+    .replace(/[^a-zA-Z0-9\s-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 100)
 
   $posthog.capture('directory_search_submitted', {
     source: 'homepage',
