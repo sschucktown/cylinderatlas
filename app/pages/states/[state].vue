@@ -120,6 +120,12 @@ useHead({
       <p class="mt-4 text-lg leading-8 text-slate-600">
         {{ facilities.length }} published {{ facilities.length === 1 ? 'facility' : 'facilities' }} currently clear the CylinderAtlas identity and service-evidence gate in {{ name }}.
       </p>
+      <NuxtLink
+        to="/how-we-verify"
+        class="mt-3 inline-flex text-sm font-semibold text-brand-800 hover:underline"
+      >
+        See how providers qualify for publication
+      </NuxtLink>
     </div>
 
     <section v-if="services.length" class="mt-9 rounded-2xl border border-slate-200 bg-white p-5">
