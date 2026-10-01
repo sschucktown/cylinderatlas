@@ -18,7 +18,17 @@ const props = withDefaults(
   },
 )
 
+const { $posthog } = useNuxtApp()
 const name = computed(() => displayName(props.facility))
+
+function trackProviderClick() {
+  $posthog.capture('provider_card_clicked', {
+    rin: props.facility.rin,
+    state: props.facility.state,
+    city: props.facility.city,
+    service_keys: props.serviceKeys,
+  })
+}
 </script>
 
 <template>
@@ -26,6 +36,7 @@ const name = computed(() => displayName(props.facility))
     :to="providerPath(facility)"
     :aria-label="'View ' + name"
     class="group block rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2"
+    @click="trackProviderClick"
   >
     <article class="p-5">
       <div class="flex items-start justify-between gap-4">
