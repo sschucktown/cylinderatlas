@@ -202,8 +202,8 @@ if (resultCount.value > 0 && currentPage.value > totalPages.value) {
 }
 
 useSeoMeta({
-  title: 'Search Cylinder Requalification Providers — Cylinder Atlas',
-  description: 'Search published Cylinder Atlas provider listings by provider, city, state, ZIP code, RIN, or service category.',
+  title: 'Search Cylinder Requalification Providers — CylinderAtlas',
+  description: 'Search published CylinderAtlas provider listings by provider, city, state, ZIP code, RIN, or service category.',
   robots: 'noindex,follow',
 })
 
@@ -215,12 +215,12 @@ useHead({
 <template>
   <main class="mx-auto max-w-7xl px-6 py-12">
     <div class="max-w-3xl">
-      <p class="text-sm font-semibold uppercase tracking-[0.14em] text-teal-700">Directory search</p>
+      <p class="text-sm font-semibold uppercase tracking-[0.14em] text-brand-700">Directory search</p>
       <h1 class="mt-2 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
         Find a cylinder requalification provider
       </h1>
       <p class="mt-4 text-slate-600">
-        Search only includes facilities that have cleared Cylinder Atlas's current publish gate.
+        Search only includes facilities that have cleared CylinderAtlas's current publish gate.
       </p>
     </div>
 
@@ -233,7 +233,7 @@ useHead({
           type="search"
           :value="searchTerm"
           placeholder="Provider, city, state, ZIP, or RIN"
-          class="w-full rounded-lg border border-slate-300 px-3 py-2.5 outline-none ring-teal-600 focus:ring-2"
+          class="w-full rounded-lg border border-slate-300 px-3 py-2.5 outline-none ring-brand-600 focus:ring-2"
         >
       </div>
 
@@ -243,7 +243,7 @@ useHead({
           id="state"
           name="state"
           :value="stateFilter"
-          class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 outline-none ring-teal-600 focus:ring-2"
+          class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 outline-none ring-brand-600 focus:ring-2"
           @change="trackFilterChanged('state', $event)"
         >
           <option value="">All states</option>
@@ -259,7 +259,7 @@ useHead({
           id="service"
           name="service"
           :value="serviceFilter"
-          class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 outline-none ring-teal-600 focus:ring-2"
+          class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 outline-none ring-brand-600 focus:ring-2"
           @change="trackFilterChanged('service', $event)"
         >
           <option value="">All services</option>
@@ -269,7 +269,7 @@ useHead({
         </select>
       </div>
 
-      <button type="submit" class="self-end rounded-lg bg-slate-950 px-5 py-2.5 font-semibold text-white hover:bg-slate-800">
+      <button type="submit" class="self-end rounded-lg bg-navy px-5 py-2.5 font-semibold text-white hover:bg-brand-950">
         Search
       </button>
     </form>
@@ -288,7 +288,7 @@ useHead({
       <NuxtLink
         v-if="hasFilters"
         to="/search"
-        class="text-sm font-semibold text-teal-800 hover:underline"
+        class="text-sm font-semibold text-brand-800 hover:underline"
       >
         Clear filters
       </NuxtLink>
