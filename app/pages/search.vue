@@ -168,6 +168,26 @@ watch(
   { immediate: true },
 )
 
+function trackSearchSubmit() {
+  $posthog.capture('directory_search_submitted', {
+    source: 'search_page',
+    has_query: Boolean(searchTerm.value),
+    query_length: searchTerm.value.length,
+    state: stateFilter.value || null,
+    service_key: serviceFilter.value || null,
+    page: currentPage.value,
+  })
+}
+
+function trackFilterChanged(filterType: 'state' | 'service', event: Event) {
+  const target = event.target as HTMLSelectElement
+  $posthog.capture('directory_filter_changed', {
+    filter_type: filterType,
+    filter_value: target.value || null,
+    has_query: Boolean(searchTerm.value),
+  })
+}
+
 function pageLink(page: number) {
   const query: Record<string, string> = {}
   if (searchTerm.value) query.q = searchTerm.value
@@ -204,7 +224,7 @@ useHead({
       </p>
     </div>
 
-    <form method="get" action="/search" class="mt-8 grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:grid-cols-[minmax(280px,1.5fr)_200px_240px_auto]">
+    <form method="get" action="/search" class="mt-8 grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:grid-cols-[minmax(280px,1.5fr)_200px_240px_auto]" @submit="trackSearchSubmit">
       <div>
         <label for="q" class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">Search</label>
         <input
@@ -224,6 +244,7 @@ useHead({
           name="state"
           :value="stateFilter"
           class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 outline-none ring-teal-600 focus:ring-2"
+          @change="trackFilterChanged('state', $event)"
         >
           <option value="">All states</option>
           <option v-for="state in results?.availableStates ?? []" :key="state" :value="state">
@@ -239,6 +260,7 @@ useHead({
           name="service"
           :value="serviceFilter"
           class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 outline-none ring-teal-600 focus:ring-2"
+          @change="trackFilterChanged('service', $event)"
         >
           <option value="">All services</option>
           <option v-for="service in SERVICE_KEYS" :key="service" :value="service">
