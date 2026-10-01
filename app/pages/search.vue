@@ -152,11 +152,20 @@ const rangeStart = computed(() => resultCount.value ? (currentPage.value - 1) * 
 const rangeEnd = computed(() => Math.min(currentPage.value * PAGE_SIZE, resultCount.value))
 const hasFilters = computed(() => Boolean(searchTerm.value || stateFilter.value || serviceFilter.value))
 
+function normalizedAnalyticsQuery(value: string) {
+  return value
+    .replace(/[^a-zA-Z0-9\s-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 100)
+}
+
 function searchAnalyticsProperties(resultCount?: number) {
+  const query = normalizedAnalyticsQuery(searchTerm.value)
   const properties = {
-    has_query: Boolean(searchTerm.value),
-    query: searchTerm.value || null,
-    query_length: searchTerm.value.length,
+    has_query: Boolean(query),
+    query: query || null,
+    query_length: query.length,
     state: stateFilter.value || null,
     service_key: serviceFilter.value || null,
     active_filter_count:
@@ -193,7 +202,7 @@ watch(
 function trackSearchSubmit(event: Event) {
   const form = event.currentTarget as HTMLFormElement
   const data = new FormData(form)
-  const query = String(data.get('q') ?? '').trim()
+  const query = normalizedAnalyticsQuery(String(data.get('q') ?? ''))
   const state = String(data.get('state') ?? '').trim().toUpperCase()
   const service = String(data.get('service') ?? '').trim()
 
