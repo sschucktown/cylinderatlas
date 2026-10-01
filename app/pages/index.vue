@@ -8,7 +8,7 @@ import {
 } from '~/utils/directory'
 import { canonicalUrl } from '~/utils/site'
 
-const { $supabase } = useNuxtApp()
+const { $supabase, $posthog } = useNuxtApp()
 
 async function redirectAdminAuthLanding() {
   if (!import.meta.client) return
@@ -103,6 +103,18 @@ const { data: directory } = await useAsyncData('directory-home', async () => {
   }
 })
 
+function trackDirectorySearch(event: Event) {
+  const form = event.currentTarget as HTMLFormElement
+  const data = new FormData(form)
+  const query = String(data.get('q') ?? '').trim()
+
+  $posthog.capture('directory_search_submitted', {
+    source: 'homepage',
+    has_query: Boolean(query),
+    query_length: query.length,
+  })
+}
+
 const availableServices = computed(() =>
   SERVICE_KEYS
     .map((key) => ({
@@ -139,7 +151,7 @@ useHead({
             Cylinder Atlas starts with PHMSA RIN data, then checks current business identity and customer-facing services before a facility appears in the directory.
           </p>
 
-          <form action="/search" method="get" class="mt-8 flex max-w-2xl flex-col gap-3 sm:flex-row">
+          <form action="/search" method="get" class="mt-8 flex max-w-2xl flex-col gap-3 sm:flex-row" @submit="trackDirectorySearch">
             <label for="home-search" class="sr-only">Search providers</label>
             <input
               id="home-search"
