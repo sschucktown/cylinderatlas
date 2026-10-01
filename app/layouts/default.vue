@@ -49,6 +49,14 @@
           An independent directory built from PHMSA requalifier records plus current business and service evidence.
           CylinderAtlas is not PHMSA or the U.S. Department of Transportation.
         </p>
+        <nav class="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm font-medium" aria-label="Directory information">
+          <NuxtLink to="/how-we-verify" class="text-brand-800 hover:underline">
+            How we verify providers
+          </NuxtLink>
+          <NuxtLink to="/search" class="text-brand-800 hover:underline">
+            Find a provider
+          </NuxtLink>
+        </nav>
       </div>
     </footer>
   </div>
