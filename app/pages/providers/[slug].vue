@@ -12,7 +12,7 @@ import {
 import { canonicalUrl } from '~/utils/site'
 
 const route = useRoute()
-const { $supabase } = useNuxtApp()
+const { $supabase, $posthog } = useNuxtApp()
 
 const slug = String(route.params.slug ?? '')
 const rin = rinFromProviderSlug(slug)
@@ -57,6 +57,25 @@ if (publicSourcesResult.error) throw publicSourcesResult.error
 const services = servicesResult.data ?? []
 const publicSources = publicSourcesResult.data ?? []
 const name = displayName(facility)
+
+onMounted(() => {
+  $posthog.capture('provider_profile_viewed', {
+    rin: facility.rin,
+    state: facility.state,
+    city: facility.city,
+    service_keys: services.map((service) => service.service_key),
+    has_website: Boolean(facility.website_url),
+    has_phone: Boolean(facility.phone),
+  })
+})
+
+function trackProviderWebsiteClick() {
+  $posthog.capture('provider_website_clicked', {
+    rin: facility.rin,
+    state: facility.state,
+    service_keys: services.map((service) => service.service_key),
+  })
+}
 const currentPath = providerPath(facility)
 const verifiedDate = formatVerifiedDate(facility.verified_at)
 const sourceEffectiveDate = formatVerifiedDate(facility.source_effective_date)
@@ -154,6 +173,7 @@ useHead({
             target="_blank"
             rel="noopener noreferrer"
             class="rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-800 hover:border-slate-400"
+            @click="trackProviderWebsiteClick"
           >
             Visit provider website
           </a>
