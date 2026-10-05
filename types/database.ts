@@ -102,34 +102,43 @@ export type Database = {
       }
       corrections: {
         Row: {
+          admin_note: string | null
           correction_type: string
           created_at: string
           facility_id: string
           field_name: string
           id: string
           proposed_value: Json
+          reviewed_at: string | null
+          reviewed_by: string | null
           status: Database["public"]["Enums"]["correction_status_enum"]
           updated_at: string
           user_id: string | null
         }
         Insert: {
+          admin_note?: string | null
           correction_type: string
           created_at?: string
           facility_id: string
           field_name: string
           id?: string
           proposed_value: Json
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           status?: Database["public"]["Enums"]["correction_status_enum"]
           updated_at?: string
           user_id?: string | null
         }
         Update: {
+          admin_note?: string | null
           correction_type?: string
           created_at?: string
           facility_id?: string
           field_name?: string
           id?: string
           proposed_value?: Json
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           status?: Database["public"]["Enums"]["correction_status_enum"]
           updated_at?: string
           user_id?: string | null
@@ -395,40 +404,44 @@ export type Database = {
           },
         ]
       }
-      facility_services: {
+      facility_memberships: {
         Row: {
-          confidence: number
           created_at: string
           facility_id: string
           id: string
-          service_key: string
-          status: Database["public"]["Enums"]["service_status_enum"]
-          updated_at: string
+          role: string
+          source_claim_id: string | null
+          user_id: string
         }
         Insert: {
-          confidence?: number
           created_at?: string
           facility_id: string
           id?: string
-          service_key: string
-          status?: Database["public"]["Enums"]["service_status_enum"]
-          updated_at?: string
+          role?: string
+          source_claim_id?: string | null
+          user_id: string
         }
         Update: {
-          confidence?: number
           created_at?: string
           facility_id?: string
           id?: string
-          service_key?: string
-          status?: Database["public"]["Enums"]["service_status_enum"]
-          updated_at?: string
+          role?: string
+          source_claim_id?: string | null
+          user_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "facility_services_facility_id_fkey"
+            foreignKeyName: "facility_memberships_facility_id_fkey"
             columns: ["facility_id"]
             isOneToOne: false
             referencedRelation: "facilities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "facility_memberships_source_claim_id_fkey"
+            columns: ["source_claim_id"]
+            isOneToOne: false
+            referencedRelation: "claims"
             referencedColumns: ["id"]
           },
         ]
@@ -467,6 +480,44 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "facility_public_sources_facility_id_fkey"
+            columns: ["facility_id"]
+            isOneToOne: false
+            referencedRelation: "facilities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      facility_services: {
+        Row: {
+          confidence: number
+          created_at: string
+          facility_id: string
+          id: string
+          service_key: string
+          status: Database["public"]["Enums"]["service_status_enum"]
+          updated_at: string
+        }
+        Insert: {
+          confidence?: number
+          created_at?: string
+          facility_id: string
+          id?: string
+          service_key: string
+          status?: Database["public"]["Enums"]["service_status_enum"]
+          updated_at?: string
+        }
+        Update: {
+          confidence?: number
+          created_at?: string
+          facility_id?: string
+          id?: string
+          service_key?: string
+          status?: Database["public"]["Enums"]["service_status_enum"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "facility_services_facility_id_fkey"
             columns: ["facility_id"]
             isOneToOne: false
             referencedRelation: "facilities"
@@ -538,10 +589,42 @@ export type Database = {
           verification_method: string
         }[]
       }
+      admin_corrections_queue: {
+        Args: never
+        Returns: {
+          admin_note: string
+          city: string
+          claimant_email: string
+          claimant_user_id: string
+          correction_created_at: string
+          correction_id: string
+          correction_status: Database["public"]["Enums"]["correction_status_enum"]
+          correction_type: string
+          display_address: string
+          display_name: string
+          facility_id: string
+          field_name: string
+          phmsa_address: string
+          phmsa_name: string
+          proposed_value: Json
+          reviewed_at: string
+          reviewed_by: string
+          rin: string
+          state: string
+        }[]
+      }
       admin_review_claim: {
         Args: {
           p_claim_id: string
           p_status: Database["public"]["Enums"]["claim_status_enum"]
+        }
+        Returns: boolean
+      }
+      admin_review_correction: {
+        Args: {
+          p_admin_note?: string
+          p_correction_id: string
+          p_status: Database["public"]["Enums"]["correction_status_enum"]
         }
         Returns: boolean
       }
