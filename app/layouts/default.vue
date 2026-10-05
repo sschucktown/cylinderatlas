@@ -21,6 +21,7 @@
 
         <nav class="flex items-center gap-5 text-sm font-medium text-slate-600">
           <NuxtLink to="/search" class="hover:text-navy">Find a provider</NuxtLink>
+          <NuxtLink to="/provider" class="hover:text-navy">Provider account</NuxtLink>
         </nav>
       </div>
     </header>
