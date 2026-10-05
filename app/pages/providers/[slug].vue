@@ -54,8 +54,18 @@ const publicSourcesResult = await $supabase
 
 if (publicSourcesResult.error) throw publicSourcesResult.error
 
+const intakeResult = await $supabase
+  .from('facility_intake_settings')
+  .select('enabled')
+  .eq('facility_id', facility.id)
+  .eq('enabled', true)
+  .maybeSingle()
+
+if (intakeResult.error) throw intakeResult.error
+
 const services = servicesResult.data ?? []
 const publicSources = publicSourcesResult.data ?? []
+const intakeEnabled = intakeResult.data?.enabled === true
 const name = displayName(facility)
 
 onMounted(() => {
@@ -66,6 +76,7 @@ onMounted(() => {
     service_keys: services.map((service) => service.service_key),
     has_website: Boolean(facility.website_url),
     has_phone: Boolean(facility.phone),
+    intake_enabled: intakeEnabled,
   })
 })
 
@@ -86,6 +97,16 @@ function trackProviderPhoneClick() {
     service_keys: services.map((service) => service.service_key),
   })
 }
+
+function trackServiceRequestClick() {
+  $posthog.capture('service_request_cta_clicked', {
+    rin: facility.rin,
+    state: facility.state,
+    city: facility.city,
+    service_keys: services.map((service) => service.service_key),
+  })
+}
+
 const currentPath = providerPath(facility)
 const verifiedDate = formatVerifiedDate(facility.verified_at)
 const sourceEffectiveDate = formatVerifiedDate(facility.source_effective_date)
@@ -100,6 +121,7 @@ const address =
 const canonicalSlug = currentPath.split('/').pop() || slug
 const claimPath = '/claim/' + canonicalSlug
 const correctionPath = '/correct/' + canonicalSlug
+const requestPath = '/request/' + canonicalSlug
 
 if (route.path !== currentPath) {
   await navigateTo(currentPath, { redirectCode: 301, replace: true })
@@ -169,11 +191,19 @@ useHead({
           {{ titleCaseCity(facility.city) }}, {{ facility.state }}
         </p>
 
-        <div v-if="facility.phone || facility.website_url" class="mt-6 flex flex-wrap gap-3">
+        <div v-if="intakeEnabled || facility.phone || facility.website_url" class="mt-6 flex flex-wrap gap-3">
+          <NuxtLink
+            v-if="intakeEnabled"
+            :to="requestPath"
+            class="rounded-xl bg-navy px-5 py-3 text-sm font-semibold text-white hover:bg-brand-950"
+            @click="trackServiceRequestClick"
+          >
+            Request service
+          </NuxtLink>
           <a
             v-if="facility.phone"
             :href="'tel:' + facility.phone"
-            class="rounded-xl bg-navy px-5 py-3 text-sm font-semibold text-white hover:bg-brand-950"
+            class="rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-800 hover:border-slate-400"
             @click="trackProviderPhoneClick"
           >
             Call provider
@@ -323,6 +353,20 @@ useHead({
       </div>
 
       <aside class="h-fit space-y-4 lg:sticky lg:top-6">
+        <section v-if="intakeEnabled" class="rounded-2xl border border-brand-200 bg-white p-6 shadow-sm">
+          <p class="text-sm font-semibold text-slate-950">Request service</p>
+          <p class="mt-2 text-xs leading-5 text-slate-600">
+            Send a structured request directly to this provider's verified CylinderAtlas account.
+          </p>
+          <NuxtLink
+            :to="requestPath"
+            class="mt-4 block rounded-lg bg-navy px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-brand-950"
+            @click="trackServiceRequestClick"
+          >
+            Start request
+          </NuxtLink>
+        </section>
+
         <section class="rounded-2xl border border-brand-200 bg-brand-50 p-6">
           <p class="text-sm font-semibold text-brand-950">Why this listing is public</p>
           <p class="mt-3 text-sm leading-6 text-brand-900">
