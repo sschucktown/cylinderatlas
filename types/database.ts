@@ -404,6 +404,35 @@ export type Database = {
           },
         ]
       }
+      facility_intake_settings: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          facility_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          facility_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          facility_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "facility_intake_settings_facility_id_fkey"
+            columns: ["facility_id"]
+            isOneToOne: true
+            referencedRelation: "facilities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       facility_memberships: {
         Row: {
           created_at: string
@@ -518,6 +547,100 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "facility_services_facility_id_fkey"
+            columns: ["facility_id"]
+            isOneToOne: false
+            referencedRelation: "facilities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_request_events: {
+        Row: {
+          actor_user_id: string | null
+          created_at: string
+          event_type: Database["public"]["Enums"]["service_request_event_enum"]
+          id: string
+          metadata: Json
+          request_id: string
+        }
+        Insert: {
+          actor_user_id?: string | null
+          created_at?: string
+          event_type: Database["public"]["Enums"]["service_request_event_enum"]
+          id?: string
+          metadata?: Json
+          request_id: string
+        }
+        Update: {
+          actor_user_id?: string | null
+          created_at?: string
+          event_type?: Database["public"]["Enums"]["service_request_event_enum"]
+          id?: string
+          metadata?: Json
+          request_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_request_events_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "service_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_requests: {
+        Row: {
+          created_at: string
+          customer_email: string
+          customer_name: string
+          customer_phone: string | null
+          facility_id: string
+          id: string
+          notes: string | null
+          provider_viewed_at: string | null
+          quantity: number | null
+          service_key: string
+          source_path: string | null
+          status: Database["public"]["Enums"]["service_request_status_enum"]
+          timing: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          customer_email: string
+          customer_name: string
+          customer_phone?: string | null
+          facility_id: string
+          id?: string
+          notes?: string | null
+          provider_viewed_at?: string | null
+          quantity?: number | null
+          service_key: string
+          source_path?: string | null
+          status?: Database["public"]["Enums"]["service_request_status_enum"]
+          timing: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          customer_email?: string
+          customer_name?: string
+          customer_phone?: string | null
+          facility_id?: string
+          id?: string
+          notes?: string | null
+          provider_viewed_at?: string | null
+          quantity?: number | null
+          service_key?: string
+          source_path?: string | null
+          status?: Database["public"]["Enums"]["service_request_status_enum"]
+          timing?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_requests_facility_id_fkey"
             columns: ["facility_id"]
             isOneToOne: false
             referencedRelation: "facilities"
@@ -657,6 +780,13 @@ export type Database = {
       identity_match_enum: "matched" | "changed" | "conflict" | "unknown"
       public_source_purpose_enum: "identity" | "service" | "provider_website"
       publish_status_enum: "publish" | "review" | "exclude"
+      service_request_event_enum:
+        | "submitted"
+        | "provider_opened"
+        | "contacted"
+        | "won"
+        | "not_fit"
+      service_request_status_enum: "new" | "contacted" | "won" | "not_fit"
       service_status_enum:
         | "verified"
         | "inferred"
@@ -818,6 +948,14 @@ export const Constants = {
       identity_match_enum: ["matched", "changed", "conflict", "unknown"],
       public_source_purpose_enum: ["identity", "service", "provider_website"],
       publish_status_enum: ["publish", "review", "exclude"],
+      service_request_event_enum: [
+        "submitted",
+        "provider_opened",
+        "contacted",
+        "won",
+        "not_fit",
+      ],
+      service_request_status_enum: ["new", "contacted", "won", "not_fit"],
       service_status_enum: [
         "verified",
         "inferred",
