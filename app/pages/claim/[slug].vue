@@ -223,6 +223,13 @@ useSeoMeta({
           <p class="mt-2 text-sm leading-6 text-brand-900">
             Public provider data will not change until the request is reviewed.
           </p>
+          <NuxtLink
+            v-if="claimStatus === 'verified'"
+            to="/provider"
+            class="mt-4 inline-flex text-sm font-semibold text-brand-950 hover:underline"
+          >
+            Open provider account →
+          </NuxtLink>
         </div>
 
         <div v-else class="mt-4 rounded-2xl border border-slate-200 p-5">
