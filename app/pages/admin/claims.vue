@@ -190,6 +190,10 @@ useSeoMeta({
         <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
           Verify the claimant-to-facility relationship before giving the account provider ownership.
         </p>
+        <div class="mt-4 flex gap-4 text-sm font-semibold">
+          <span class="text-slate-950">Claims</span>
+          <NuxtLink to="/admin/corrections" class="text-brand-800 hover:underline">Corrections</NuxtLink>
+        </div>
       </div>
 
       <button
