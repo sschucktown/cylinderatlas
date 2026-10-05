@@ -46,6 +46,8 @@ const SERVICE_SOURCE_TYPES = new Set<EvidenceType>([
   'first_party',
   'regulatory',
   'provider_claim',
+  'directory',
+  'other',
 ])
 
 const IDENTITY_SOURCE_TYPES = new Set<EvidenceType>([
@@ -113,6 +115,8 @@ function sourceLabel(purpose: Purpose, type: EvidenceType) {
   if (type === 'regulatory') return prefix + ' — regulatory record'
   if (type === 'business_registry') return prefix + ' — business registry'
   if (type === 'provider_claim') return prefix + ' — provider confirmed'
+  if (type === 'directory') return prefix + ' — current directory evidence'
+  if (type === 'other') return prefix + ' — current supporting evidence'
   return prefix
 }
 
