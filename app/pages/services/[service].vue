@@ -5,6 +5,7 @@ import {
   providerPath,
   serviceInfo,
   stateName,
+  statePath,
 } from '~/utils/directory'
 import { canonicalUrl } from '~/utils/site'
 
@@ -195,6 +196,19 @@ useHead({
         >
           {{ stateName(state.code) }} · {{ state.count }}
         </NuxtLink>
+      </div>
+      <div v-if="states.some((state) => state.count >= 3)" class="mt-5 border-t border-slate-200 pt-4">
+        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Browse full state directories</p>
+        <div class="mt-3 flex flex-wrap gap-3">
+          <NuxtLink
+            v-for="state in states.filter((state) => state.count >= 3)"
+            :key="state.code"
+            :to="statePath(state.code)"
+            class="text-sm font-medium text-brand-800 hover:underline"
+          >
+            {{ stateName(state.code) }} providers
+          </NuxtLink>
+        </div>
       </div>
     </section>
 
